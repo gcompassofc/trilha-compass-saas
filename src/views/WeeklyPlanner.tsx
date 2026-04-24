@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
-import { Client, WeeklyTask, DayOfWeek, MasterTask } from '../types';
+import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember } from '../types';
 
 interface WeeklyPlannerProps {
   clients: Client[];
   weeklyTasks: WeeklyTask[];
-  onAddTask: (task: WeeklyTask) => void;
+  teamMembers: TeamMember[];
+  currentWeekId: string;
+  setCurrentWeekId: (weekId: string) => void;
+  onAddTask: (task: Omit<WeeklyTask, 'id'>) => void;
   onUpdateTask: (task: WeeklyTask) => void;
   onDeleteTask: (id: string) => void;
   onReorderTasks: (day: DayOfWeek, tasks: WeeklyTask[]) => void;
@@ -14,20 +17,42 @@ interface WeeklyPlannerProps {
 
 const DAYS: DayOfWeek[] = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
-export default function WeeklyPlanner({ clients, weeklyTasks, onAddTask, onUpdateTask, onDeleteTask, onReorderTasks }: WeeklyPlannerProps) {
+export default function WeeklyPlanner({ 
+  clients, 
+  weeklyTasks, 
+  teamMembers,
+  currentWeekId,
+  setCurrentWeekId,
+  onAddTask, 
+  onUpdateTask, 
+  onDeleteTask, 
+  onReorderTasks 
+}: WeeklyPlannerProps) {
   const [addingTaskForDay, setAddingTaskForDay] = useState<DayOfWeek | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('standalone');
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [newSubTaskTitles, setNewSubTaskTitles] = useState<Record<string, string>>({});
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    const [year, month, day] = currentWeekId.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() + (direction === 'next' ? 7 : -7));
+    const newWeekId = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    setCurrentWeekId(newWeekId);
+  };
 
   const handleAddTask = (day: DayOfWeek, masterTask?: MasterTask) => {
-    const task: WeeklyTask = {
-      id: crypto.randomUUID(),
+    const task: Omit<WeeklyTask, 'id'> = {
+      weekId: currentWeekId,
       day,
       title: masterTask ? masterTask.title : newTaskTitle,
       clientId: selectedClientId === 'standalone' ? undefined : selectedClientId,
       masterTaskId: masterTask?.id,
       completed: masterTask ? masterTask.completed : false,
       order: weeklyTasks.filter(t => t.day === day).length,
+      subTasks: masterTask?.subTasks || [],
+      responsible: masterTask?.responsible
     };
 
     onAddTask(task);
@@ -39,10 +64,58 @@ export default function WeeklyPlanner({ clients, weeklyTasks, onAddTask, onUpdat
     onUpdateTask({ ...task, completed: !task.completed });
   };
 
+  const toggleSubTask = (task: WeeklyTask, subTaskId: string) => {
+    const updatedSubTasks = (task.subTasks || []).map(st => 
+      st.id === subTaskId ? { ...st, completed: !st.completed } : st
+    );
+    
+    // Auto-complete main task if all subtasks are done
+    const allDone = updatedSubTasks.length > 0 && updatedSubTasks.every(st => st.completed);
+    
+    onUpdateTask({ 
+      ...task, 
+      subTasks: updatedSubTasks,
+      completed: allDone ? true : task.completed 
+    });
+  };
+
+  const addSubTask = (task: WeeklyTask) => {
+    const title = newSubTaskTitles[task.id];
+    if (!title?.trim()) return;
+    
+    const newSub: SubTask = {
+      id: crypto.randomUUID(),
+      title: title,
+      completed: false
+    };
+    onUpdateTask({
+      ...task,
+      subTasks: [...(task.subTasks || []), newSub],
+      completed: false // If adding new subtask, main task might not be completed anymore
+    });
+    setNewSubTaskTitles({ ...newSubTaskTitles, [task.id]: '' });
+  };
+
+  const removeSubTask = (task: WeeklyTask, subTaskId: string) => {
+    onUpdateTask({
+      ...task,
+      subTasks: (task.subTasks || []).filter(st => st.id !== subTaskId)
+    });
+  };
+
+  const changeTaskResponsible = (task: WeeklyTask, responsible: string) => {
+    onUpdateTask({ ...task, responsible });
+  };
+
+  const moveTaskToDay = (task: WeeklyTask, newDay: DayOfWeek) => {
+    onUpdateTask({ 
+      ...task, 
+      day: newDay,
+      order: weeklyTasks.filter(t => t.day === newDay).length 
+    });
+  };
+
   const selectedClientBacklog = clients.find(c => c.id === selectedClientId)?.masterTasks.filter(t => {
-    // Only show tasks that are NOT already in the weekly planner OR show all? 
-    // User said: "puxar as demandas que eu organizei ali nos clientes"
-    // Usually we don't want to add the same task twice to the week.
     return !weeklyTasks.some(wt => wt.masterTaskId === t.id);
   }) || [];
 
@@ -51,7 +124,20 @@ export default function WeeklyPlanner({ clients, weeklyTasks, onAddTask, onUpdat
       <header className="flex justify-between items-end">
         <div className="gap-2 flex flex-col">
           <h1 className="text-4xl font-bold prisma-text tracking-tight">Sprint Semanal</h1>
-          <p className="text-slate-400 font-light">Distribua as demandas do backlog nos dias da semana.</p>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-1">
+              <button onClick={() => navigateWeek('prev')} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-medium text-slate-300 px-2 tracking-wide">
+                {currentWeekId.split('-').reverse().join('/')}
+              </span>
+              <button onClick={() => navigateWeek('next')} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-slate-400 font-light">Distribua as demandas nos dias da semana.</p>
+          </div>
         </div>
         <div className="hidden lg:flex gap-4 items-center bg-white/5 border border-white/5 px-4 py-2 rounded-2xl">
           <div className="flex flex-col items-end">
@@ -72,7 +158,7 @@ export default function WeeklyPlanner({ clients, weeklyTasks, onAddTask, onUpdat
 
       <div className="flex-1 overflow-x-auto pb-8 -mx-8 px-8">
         <div className="flex gap-6 min-w-max h-full">
-          {DAYS.map((day, idx) => {
+          {DAYS.map((day) => {
             const dayTasks = weeklyTasks
               .filter(t => t.day === day)
               .sort((a, b) => a.order - b.order);
@@ -80,10 +166,10 @@ export default function WeeklyPlanner({ clients, weeklyTasks, onAddTask, onUpdat
             const isToday = new Date().toLocaleDateString('pt-BR', { weekday: 'long' }).toLowerCase().includes(day.toLowerCase().slice(0, 3));
 
             return (
-              <div key={day} className={`w-[340px] flex flex-col gap-4 relative ${isToday ? 'scale-105 z-10' : ''}`}>
+              <div key={day} className={`w-[360px] flex flex-col gap-4 relative ${isToday ? 'z-10' : ''}`}>
                 <div className="flex items-center justify-between px-3">
                   <div className="flex items-center gap-3">
-                    <h2 className={`font-bold text-xl ${isToday ? 'text-indigo-400' : 'text-slate-200'}`}>{day}</h2>
+                    <h2 className={`font-bold text-xl ${isToday ? 'text-indigo-400 underline underline-offset-8 decoration-indigo-500/30' : 'text-slate-200'}`}>{day}</h2>
                     {isToday && <span className="bg-indigo-500/20 text-indigo-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Hoje</span>}
                   </div>
                   <span className="text-[11px] font-mono text-slate-500 bg-white/5 px-2 py-1 rounded-lg">
@@ -100,7 +186,10 @@ export default function WeeklyPlanner({ clients, weeklyTasks, onAddTask, onUpdat
                   >
                     {dayTasks.map((task) => {
                       const client = clients.find(c => c.id === task.clientId);
-                      const masterTask = client?.masterTasks.find(mt => mt.id === task.masterTaskId);
+                      const isExpanded = expandedTaskId === task.id;
+                      const subTasksDone = (task.subTasks || []).filter(st => st.completed).length;
+                      const subTasksTotal = (task.subTasks || []).length;
+                      const progress = subTasksTotal > 0 ? (subTasksDone / subTasksTotal) * 100 : 0;
                       
                       return (
                         <Reorder.Item
@@ -114,40 +203,127 @@ export default function WeeklyPlanner({ clients, weeklyTasks, onAddTask, onUpdat
                               : 'bg-white/[0.03] border-white/5 hover:border-white/10 hover:bg-white/[0.05] shadow-lg shadow-black/20'
                           }`}
                         >
-                          <div className="flex items-start gap-3">
-                            <button 
-                              onClick={() => toggleTask(task)}
-                              className="mt-0.5 flex-shrink-0"
-                            >
-                              {task.completed ? (
-                                <CheckCircle2 className="w-5 h-5 text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" />
-                              ) : (
-                                <Circle className="w-5 h-5 text-slate-700 group-hover:text-slate-400 transition-colors" />
-                              )}
-                            </button>
-                            
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-[13px] leading-relaxed break-words font-medium ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
-                                {task.title}
-                              </p>
-                              {client && (
-                                <div className="mt-3 flex items-center gap-2">
-                                  <span className="text-[9px] uppercase font-bold tracking-[0.1em] px-2 py-0.5 rounded bg-white/5" style={{ color: client.color }}>
-                                    {client.name}
-                                  </span>
-                                  {masterTask?.priority === 'high' && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)] animate-pulse" title="Prioridade Alta" />
+                          <div className="flex flex-col gap-3">
+                            <div className="flex items-start gap-3">
+                              <button 
+                                onClick={() => toggleTask(task)}
+                                className="mt-0.5 flex-shrink-0"
+                              >
+                                {task.completed ? (
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" />
+                                ) : (
+                                  <Circle className="w-5 h-5 text-slate-700 group-hover:text-slate-400 transition-colors" />
+                                )}
+                              </button>
+                              
+                              <div className="flex-1 min-w-0" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
+                                <p className={`text-[13px] leading-relaxed break-words font-medium cursor-pointer ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                                  {task.title}
+                                </p>
+                                
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                  {client && (
+                                    <span className="text-[9px] uppercase font-bold tracking-[0.1em] px-2 py-0.5 rounded bg-white/5" style={{ color: client.color }}>
+                                      {client.name}
+                                    </span>
+                                  )}
+                                  {task.responsible && (() => {
+                                    const member = teamMembers.find(m => m.id === task.responsible || m.name === task.responsible);
+                                    return (
+                                      <span className="text-[9px] text-slate-400 flex items-center gap-1.5 bg-white/5 pl-1 pr-2 py-0.5 rounded-full">
+                                        {member?.photoUrl ? (
+                                          <img src={member.photoUrl} alt={member?.name} className="w-3.5 h-3.5 rounded-full object-cover" />
+                                        ) : (
+                                          <User2 className="w-3 h-3 ml-1" />
+                                        )}
+                                        {member ? member.name : task.responsible}
+                                      </span>
+                                    );
+                                  })()}
+                                  {subTasksTotal > 0 && (
+                                    <span className="text-[9px] text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded">
+                                      {subTasksDone}/{subTasksTotal}
+                                    </span>
                                   )}
                                 </div>
-                              )}
+                              </div>
+
+                              <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                <button onClick={() => onDeleteTask(task.id)} className="p-1 text-slate-600 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                                <div className="relative group/move">
+                                  <button className="p-1 text-slate-600 hover:text-indigo-400"><Calendar className="w-3.5 h-3.5" /></button>
+                                  <div className="absolute right-0 top-0 hidden group-hover/move:flex flex-col bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-50 py-1 min-w-[120px]">
+                                    {DAYS.filter(d => d !== day).map(d => (
+                                      <button key={d} onClick={() => moveTaskToDay(task, d)} className="px-3 py-1.5 text-[10px] text-left text-slate-400 hover:bg-white/5 hover:text-white">{d}</button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
 
-                            <button 
-                              onClick={() => onDeleteTask(task.id)}
-                              className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-rose-500 transition-all"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {/* Progress Bar for Subtasks */}
+                            {subTasksTotal > 0 && (
+                              <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                <motion.div 
+                                  className="h-full bg-indigo-500"
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            )}
+
+                            {/* Subtasks Section */}
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div 
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="pt-2 border-t border-white/5 space-y-3"
+                                >
+                                  <div className="flex flex-col gap-2">
+                                    {(task.subTasks || []).map(st => (
+                                      <div key={st.id} className="flex items-center gap-2 group/st">
+                                        <button onClick={() => toggleSubTask(task, st.id)}>
+                                          {st.completed 
+                                            ? <CheckSquare className="w-3.5 h-3.5 text-emerald-500" />
+                                            : <Square className="w-3.5 h-3.5 text-slate-600 hover:text-slate-400" />
+                                          }
+                                        </button>
+                                        <span className={`text-[11px] flex-1 ${st.completed ? 'text-slate-600 line-through' : 'text-slate-400'}`}>
+                                          {st.title}
+                                        </span>
+                                        <button onClick={() => removeSubTask(task, st.id)} className="opacity-0 group-hover/st:opacity-100 p-1 text-slate-600 hover:text-rose-500"><X className="w-3 h-3" /></button>
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  <div className="flex gap-2">
+                                    <input 
+                                      type="text" 
+                                      placeholder="Nova subtarefa..."
+                                      value={newSubTaskTitles[task.id] || ''}
+                                      onChange={(e) => setNewSubTaskTitles({ ...newSubTaskTitles, [task.id]: e.target.value })}
+                                      onKeyDown={(e) => e.key === 'Enter' && addSubTask(task)}
+                                      className="flex-1 bg-white/5 border border-white/5 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+                                    />
+                                    <button onClick={() => addSubTask(task)} className="p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500/30"><Plus className="w-3 h-3" /></button>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 pt-2">
+                                    <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Responsável:</span>
+                                    <select 
+                                      value={task.responsible || ''}
+                                      onChange={(e) => changeTaskResponsible(task, e.target.value)}
+                                      className="bg-transparent text-[10px] text-slate-300 focus:outline-none border-none p-0 cursor-pointer hover:text-indigo-400"
+                                    >
+                                      <option value="">Ninguém</option>
+                                      {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    </select>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
                         </Reorder.Item>
                       );
@@ -191,7 +367,10 @@ export default function WeeklyPlanner({ clients, weeklyTasks, onAddTask, onUpdat
                                    onClick={() => handleAddTask(day, t)}
                                    className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-indigo-500/20 text-xs text-slate-400 hover:text-white transition-all transition-colors border border-transparent hover:border-indigo-500/30 flex justify-between items-center group/btn"
                                  >
-                                   <span className="truncate pr-2">{t.title}</span>
+                                   <div className="flex flex-col">
+                                     <span className="truncate pr-2 font-medium">{t.title}</span>
+                                     {t.responsible && <span className="text-[8px] text-slate-500">Resp: {teamMembers.find(m => m.id === t.responsible || m.name === t.responsible)?.name || t.responsible}</span>}
+                                   </div>
                                    <Plus className="w-3 h-3 opacity-0 group-hover/btn:opacity-100" />
                                  </button>
                                ))}

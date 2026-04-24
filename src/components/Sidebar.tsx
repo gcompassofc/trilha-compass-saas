@@ -1,15 +1,16 @@
-import { LayoutDashboard, Users, Calendar, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, Settings, LogOut, Building2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface SidebarProps {
-  activeTab: 'planner' | 'clients';
-  setActiveTab: (tab: 'planner' | 'clients') => void;
+  activeTab: 'planner' | 'clients' | 'team';
+  setActiveTab: (tab: 'planner' | 'clients' | 'team') => void;
 }
 
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const menuItems = [
     { id: 'planner', label: 'Planejador', icon: Calendar },
-    { id: 'clients', label: 'Clientes', icon: Users },
+    { id: 'clients', label: 'Clientes', icon: Building2 },
+    { id: 'team', label: 'Equipe', icon: Users },
   ];
 
   return (

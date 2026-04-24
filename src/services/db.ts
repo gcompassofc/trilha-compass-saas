@@ -7,13 +7,15 @@ import {
   onSnapshot, 
   query, 
   orderBy,
+  where,
   setDoc
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Client, WeeklyTask } from '../types';
+import { Client, WeeklyTask, TeamMember } from '../types';
 
 const CLIENTS_COLLECTION = 'clients';
 const TASKS_COLLECTION = 'weeklyTasks';
+const TEAM_COLLECTION = 'teamMembers';
 
 export const dbService = {
   // Clients
@@ -43,8 +45,12 @@ export const dbService = {
   },
 
   // Weekly Tasks
-  subscribeToTasks: (callback: (tasks: WeeklyTask[]) => void) => {
-    const q = query(collection(db, TASKS_COLLECTION), orderBy('order'));
+  subscribeToTasks: (weekId: string, callback: (tasks: WeeklyTask[]) => void) => {
+    const q = query(
+      collection(db, TASKS_COLLECTION), 
+      where('weekId', '==', weekId),
+      orderBy('order')
+    );
     return onSnapshot(q, (snapshot) => {
       const tasks = snapshot.docs.map(doc => ({
         ...doc.data(),
@@ -74,5 +80,31 @@ export const dbService = {
       const { id, ...data } = task;
       await updateDoc(doc(db, TASKS_COLLECTION, id), data as any);
     }
+  },
+
+  // Team Members
+  subscribeToTeam: (callback: (members: TeamMember[]) => void) => {
+    const q = query(collection(db, TEAM_COLLECTION), orderBy('name'));
+    return onSnapshot(q, (snapshot) => {
+      const members = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as TeamMember[];
+      callback(members);
+    });
+  },
+
+  addTeamMember: async (member: Omit<TeamMember, 'id'>) => {
+    const docRef = await addDoc(collection(db, TEAM_COLLECTION), member);
+    return docRef.id;
+  },
+
+  updateTeamMember: async (member: TeamMember) => {
+    const { id, ...data } = member;
+    await updateDoc(doc(db, TEAM_COLLECTION, id), data as any);
+  },
+
+  deleteTeamMember: async (id: string) => {
+    await deleteDoc(doc(db, TEAM_COLLECTION, id));
   }
 };

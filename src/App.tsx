@@ -8,17 +8,28 @@ import { motion, AnimatePresence } from 'motion/react';
 import Sidebar from './components/Sidebar';
 import WeeklyPlanner from './views/WeeklyPlanner';
 import ClientManagement from './views/ClientManagement';
+import TeamManagement from './views/TeamManagement';
 import Login from './components/Login';
-import { Client, WeeklyTask, DayOfWeek } from './types';
+import { Client, WeeklyTask, DayOfWeek, TeamMember } from './types';
 import { dbService } from './services/db';
 import { auth } from './firebase/config';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
+const getWeekId = (date: Date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+};
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'planner' | 'clients'>('planner');
+  const [activeTab, setActiveTab] = useState<'planner' | 'clients' | 'team'>('planner');
   const [clients, setClients] = useState<Client[]>([]);
   const [weeklyTasks, setWeeklyTasks] = useState<WeeklyTask[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [currentWeekId, setCurrentWeekId] = useState(getWeekId(new Date()));
   const [loading, setLoading] = useState(true);
 
   // Auth State
@@ -30,7 +41,7 @@ export default function App() {
     return () => unsubAuth();
   }, []);
 
-  // Real-time synchronization with Firestore (only if logged in)
+  // Real-time synchronization with Firestore
   useEffect(() => {
     if (!user) return;
 
@@ -39,15 +50,23 @@ export default function App() {
       setLoading(false);
     });
 
-    const unsubTasks = dbService.subscribeToTasks((data) => {
-      setWeeklyTasks(data);
+    const unsubTeam = dbService.subscribeToTeam((data) => {
+      setTeamMembers(data);
     });
 
     return () => {
       unsubClients();
-      unsubTasks();
+      unsubTeam();
     };
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubTasks = dbService.subscribeToTasks(currentWeekId, (data) => {
+      setWeeklyTasks(data);
+    });
+    return () => unsubTasks();
+  }, [user, currentWeekId]);
 
   // Handler Functions
   const handleAddClient = async (client: Omit<Client, 'id'>) => {
@@ -71,11 +90,18 @@ export default function App() {
   };
 
   const handleUpdateTask = async (updated: WeeklyTask) => {
+
+    // Sync completion status with Client Backlog if linked
     if (updated.clientId && updated.masterTaskId) {
       const client = clients.find(c => c.id === updated.clientId);
       if (client) {
         const updatedMasterTasks = client.masterTasks.map(mt => 
-          mt.id === updated.masterTaskId ? { ...mt, completed: updated.completed } : mt
+          mt.id === updated.masterTaskId ? { 
+            ...mt, 
+            completed: updated.completed,
+            subTasks: updated.subTasks,
+            responsible: updated.responsible
+          } : mt
         );
         await dbService.updateClient({ ...client, masterTasks: updatedMasterTasks });
       }
@@ -121,7 +147,7 @@ export default function App() {
           </button>
         </div>
         <AnimatePresence mode="wait">
-          {activeTab === 'planner' ? (
+          {activeTab === 'planner' && (
             <motion.div
               key="planner"
               initial={{ opacity: 0, y: 10 }}
@@ -133,13 +159,17 @@ export default function App() {
               <WeeklyPlanner 
                 clients={clients}
                 weeklyTasks={weeklyTasks}
+                teamMembers={teamMembers}
+                currentWeekId={currentWeekId}
+                setCurrentWeekId={setCurrentWeekId}
                 onAddTask={handleAddTask}
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
                 onReorderTasks={handleReorderTasks}
               />
             </motion.div>
-          ) : (
+          )}
+          {activeTab === 'clients' && (
             <motion.div
               key="clients"
               initial={{ opacity: 0, y: 10 }}
@@ -149,9 +179,23 @@ export default function App() {
             >
               <ClientManagement 
                 clients={clients}
+                teamMembers={teamMembers}
                 onAddClient={handleAddClient}
                 onDeleteClient={handleDeleteClient}
                 onUpdateClient={handleUpdateClient}
+              />
+            </motion.div>
+          )}
+          {activeTab === 'team' && (
+            <motion.div
+              key="team"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              <TeamManagement 
+                teamMembers={teamMembers}
               />
             </motion.div>
           )}
