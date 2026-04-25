@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember } from '../types';
 
@@ -17,8 +17,57 @@ interface WeeklyPlannerProps {
 
 const DAYS: DayOfWeek[] = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
+
+const formatTime = (totalSeconds: number) => {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0) return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
+
+const TaskTimer = ({ task, onUpdateTask }: { task: WeeklyTask, onUpdateTask: (t: WeeklyTask) => void }) => {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    let interval: any;
+    if (task.timerStartedAt && !task.completed) {
+      interval = setInterval(() => setNow(Date.now()), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [task.timerStartedAt, task.completed]);
+
+  const isRunning = !!task.timerStartedAt && !task.completed;
+  const baseTime = task.timeSpent || 0;
+  const elapsed = isRunning && task.timerStartedAt ? Math.floor((now - task.timerStartedAt) / 1000) : 0;
+  const totalSeconds = baseTime + elapsed;
+
+  const toggleTimer = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (task.completed) return; // cannot start timer for completed task
+    
+    if (isRunning) {
+      // Stop
+      onUpdateTask({ ...task, timerStartedAt: null, timeSpent: totalSeconds });
+    } else {
+      // Start
+      onUpdateTask({ ...task, timerStartedAt: Date.now() });
+    }
+  };
+
+  return (
+    <button 
+      onClick={toggleTimer}
+      className={`flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-mono transition-all ${isRunning ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300 hover:bg-white/10'}`}
+    >
+      {isRunning ? <Pause className="w-2.5 h-2.5" fill="currentColor" /> : <Play className="w-2.5 h-2.5" fill="currentColor" />}
+      <span>{formatTime(totalSeconds)}</span>
+    </button>
+  );
+};
+
 export default function WeeklyPlanner({ 
-  clients, 
+clients, 
   weeklyTasks, 
   teamMembers,
   currentWeekId,

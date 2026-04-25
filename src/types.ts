@@ -37,6 +37,8 @@ export interface WeeklyTask {
   order: number;
   subTasks?: SubTask[];
   responsible?: string;
+  timeSpent?: number; // Total elapsed time in milliseconds
+  timerStartedAt?: number | null; // Timestamp when timer started, null if stopped
 }
 
 export interface TeamMember {
