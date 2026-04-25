@@ -20,9 +20,10 @@ export default function Login() {
         animate={{ opacity: 1, scale: 1 }}
         className="glass p-12 rounded-3xl border border-white/10 flex flex-col items-center max-w-md w-full text-center"
       >
-        <div className="w-20 h-20 bg-indigo-500/20 rounded-2xl flex items-center justify-center mb-8 border border-indigo-500/30">
-          <Lock className="w-10 h-10 text-indigo-400" />
+        <div className="mb-8">
+          <img src="/logo-icon.png" alt="GCompass Icon" className="w-24 h-24 object-contain" />
         </div>
+
         
         <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
           Área Restrita

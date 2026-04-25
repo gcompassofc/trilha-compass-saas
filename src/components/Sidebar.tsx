@@ -15,12 +15,10 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
   return (
     <div className="w-64 h-screen border-r border-white/5 flex flex-col p-6 sticky top-0 bg-[#030712]/50 backdrop-blur-3xl">
-      <div className="flex items-center gap-3 mb-12 px-2">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <LayoutDashboard className="text-white w-6 h-6" />
-        </div>
-        <span className="text-xl font-bold prisma-text tracking-tight uppercase">DemandFlow</span>
+      <div className="mb-12 px-2">
+        <img src="/logo-full.png" alt="GCompass Logo" className="h-10 w-auto object-contain" />
       </div>
+
 
       <nav className="flex-1 space-y-2">
         {menuItems.map((item) => (
