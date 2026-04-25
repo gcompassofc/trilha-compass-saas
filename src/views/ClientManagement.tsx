@@ -14,6 +14,7 @@ interface ClientManagementProps {
 
 export default function ClientManagement({ clients, teamMembers, onAddClient, onDeleteClient, onUpdateClient }: ClientManagementProps) {
   const [newClientName, setNewClientName] = useState('');
+  const [newClientLogoUrl, setNewClientLogoUrl] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<Priority>('medium');
@@ -56,17 +57,19 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
     }
   };
 
-  const handleAddClient = () => {
+    const handleAddClient = () => {
     if (!newClientName.trim()) return;
     const client: Client = {
       id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)),
       name: newClientName,
-      logo: '🏢',
+      logo: newClientLogoUrl ? '' : '🏢',
+      logoUrl: newClientLogoUrl || undefined,
       masterTasks: [],
       color: `hsl(${Math.random() * 360}, 70%, 60%)`,
     };
     onAddClient(client);
     setNewClientName('');
+    setNewClientLogoUrl('');
   };
 
   const handleAddTask = (clientId: string) => {
@@ -179,22 +182,31 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Client List */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="glass-panel p-4 border-white/10">
-            <div className="flex gap-2">
+                    <div className="glass-panel p-4 border-white/10">
+            <div className="flex flex-col gap-2">
               <input
                 type="text"
-                placeholder="Novo cliente..."
+                placeholder="Nome do cliente..."
                 value={newClientName}
                 onChange={(e) => setNewClientName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddClient()}
-                className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
               />
-              <button 
-                onClick={handleAddClient}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="URL da logo (opcional)..."
+                  value={newClientLogoUrl}
+                  onChange={(e) => setNewClientLogoUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddClient()}
+                  className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                />
+                <button 
+                  onClick={handleAddClient}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
 
