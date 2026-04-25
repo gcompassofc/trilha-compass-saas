@@ -224,10 +224,10 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
               >
                 <div className="flex items-center gap-4">
                   <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner border border-white/5 transition-all group-hover:scale-110"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner border border-white/5 transition-all group-hover:scale-110 overflow-hidden"
                     style={{ backgroundColor: `${client.color}20`, color: client.color, boxShadow: selectedClientId === client.id ? `0 0 15px ${client.color}40` : 'none' }}
                   >
-                    {client.logo}
+                    {client.logoUrl ? <img src={client.logoUrl} className="w-full h-full object-cover" /> : client.logo}
                   </div>
                   <div className="text-left">
                     <h3 className={`font-bold transition-colors ${selectedClientId === client.id ? 'text-white' : 'text-slate-300'}`}>
