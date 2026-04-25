@@ -259,33 +259,71 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                 className="space-y-6"
               >
                 <GlassCard className="p-8">
-                  <div className="flex justify-between items-start mb-8">
-                    <div className="flex items-center gap-6">
+                                    <div className="flex justify-between items-start mb-8">
+                    <div className="flex items-center gap-6 w-full">
                       <div 
-                        className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-2xl border border-white/10"
+                        className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-2xl border border-white/10 overflow-hidden flex-shrink-0"
                         style={{ backgroundColor: `${selectedClient.color}10`, color: selectedClient.color }}
                       >
-                        {selectedClient.logo}
+                        {selectedClient.logoUrl ? <img src={selectedClient.logoUrl} className="w-full h-full object-cover" /> : selectedClient.logo}
                       </div>
-                      <div>
-                        <h2 className="text-3xl font-bold text-white tracking-tight">{selectedClient.name}</h2>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-slate-400 text-sm flex items-center gap-1.5 font-light">
-                            <Briefcase className="w-4 h-4 text-indigo-400" />
-                            Backlog do Projeto
-                          </span>
+                      
+                      {isEditingClient ? (
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                             <label className="text-[10px] text-slate-500 font-bold uppercase">Nome</label>
+                             <input type="text" value={editClientName} onChange={e => setEditClientName(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-1 focus:ring-indigo-500" />
+                          </div>
+                          <div>
+                             <label className="text-[10px] text-slate-500 font-bold uppercase">Logo (URL da Imagem)</label>
+                             <div className="flex gap-1">
+                               <input type="text" value={editClientLogoUrl} onChange={e => setEditClientLogoUrl(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white" placeholder="https://..." />
+                             </div>
+                          </div>
+                          <div>
+                             <label className="text-[10px] text-slate-500 font-bold uppercase">Cor (Hex ou HSL)</label>
+                             <input type="text" value={editClientColor} onChange={e => setEditClientColor(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-1 focus:ring-indigo-500" />
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex-1">
+                          <h2 className="text-3xl font-bold text-white tracking-tight">{selectedClient.name}</h2>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-slate-400 text-sm flex items-center gap-1.5 font-light">
+                              <Briefcase className="w-4 h-4 text-indigo-400" />
+                              Backlog do Projeto
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <button 
-                      onClick={() => {
-                        onDeleteClient(selectedClient.id);
-                        setSelectedClientId(null);
-                      }}
-                      className="p-3 rounded-xl bg-rose-500/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all active:scale-95 border border-rose-500/10"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                    
+                    <div className="flex items-center gap-2">
+                      {isEditingClient ? (
+                        <button 
+                          onClick={() => handleSaveClient(selectedClient)}
+                          className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all border border-emerald-500/20"
+                        >
+                          <Save className="w-5 h-5" />
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => handleEditClientToggle(selectedClient)}
+                          className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all border border-indigo-500/20"
+                        >
+                          <Edit2 className="w-5 h-5" />
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => {
+                          onDeleteClient(selectedClient.id);
+                          setSelectedClientId(null);
+                        }}
+                        className="p-3 rounded-xl bg-rose-500/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all active:scale-95 border border-rose-500/10"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-6">
