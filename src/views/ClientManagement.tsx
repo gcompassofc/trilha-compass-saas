@@ -179,23 +179,24 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
               >
                 <div className="flex items-center gap-4">
                   <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner border border-white/5"
-                    style={{ backgroundColor: `${client.color}15`, color: client.color }}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner border border-white/5 transition-all group-hover:scale-110"
+                    style={{ backgroundColor: `${client.color}20`, color: client.color, boxShadow: selectedClientId === client.id ? `0 0 15px ${client.color}40` : 'none' }}
                   >
                     {client.logo}
                   </div>
                   <div className="text-left">
-                    <h3 className={`font-semibold transition-colors ${selectedClientId === client.id ? 'text-indigo-300' : 'text-slate-200'}`}>
+                    <h3 className={`font-bold transition-colors ${selectedClientId === client.id ? 'text-white' : 'text-slate-300'}`}>
                       {client.name}
                     </h3>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-slate-500 font-mono uppercase">
+                      <span className={`text-[9px] font-black uppercase tracking-widest ${selectedClientId === client.id ? 'text-indigo-400' : 'text-slate-500'}`}>
                         {client.masterTasks.filter(t => !t.completed).length} pendentes
                       </span>
                     </div>
                   </div>
                 </div>
                 <ChevronRight className={`w-4 h-4 transition-transform ${selectedClientId === client.id ? 'translate-x-1 text-indigo-400' : 'text-slate-600'}`} />
+
               </motion.button>
             ))}
           </div>
@@ -326,7 +327,10 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                           <motion.div 
                             key={task.id}
                             layout
-                            className="flex flex-col p-4 rounded-xl bg-white/[0.02] border border-white/5 group hover:border-white/10 transition-all"
+                            className={`flex flex-col p-4 rounded-xl border transition-all group ${
+                              isEditing ? 'bg-indigo-500/[0.03] border-indigo-500/20' : 'bg-white/[0.02] border-white/5 hover:border-white/10'
+                            }`}
+                            style={!task.completed ? { borderLeft: `3px solid ${selectedClient.color}` } : {}}
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex items-start gap-4 flex-1">
@@ -334,14 +338,15 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                   <Circle className="w-5 h-5 text-slate-600 hover:text-indigo-400 transition-colors" />
                                 </button>
                                 <div className="flex flex-col flex-1">
-                                  <span className="text-slate-300 font-medium cursor-pointer" onClick={() => setEditingTaskId(isEditing ? null : task.id)}>{task.title}</span>
-                                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                                    <span className={`text-[8px] uppercase font-bold px-1.5 py-0.5 rounded border ${
-                                      task.priority === 'high' ? 'priority-high' : 
-                                      task.priority === 'medium' ? 'priority-medium' : 'priority-low'
+                                  <span className="text-slate-200 font-bold cursor-pointer hover:text-white transition-colors" onClick={() => setEditingTaskId(isEditing ? null : task.id)}>{task.title}</span>
+                                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                    <span className={`text-[8px] uppercase font-black tracking-tighter px-2 py-0.5 rounded border ${
+                                      task.priority === 'high' ? 'bg-rose-500/20 text-rose-500 border-rose-500/20' : 
+                                      task.priority === 'medium' ? 'bg-amber-500/20 text-amber-500 border-amber-500/20' : 'bg-slate-500/20 text-slate-500 border-slate-500/20'
                                     }`}>
-                                      {task.priority === 'high' ? 'Urgente' : task.priority === 'medium' ? 'Normal' : 'Baixa'}
+                                      {task.priority === 'high' ? 'URGENTE' : task.priority === 'medium' ? 'NORMAL' : 'BAIXA'}
                                     </span>
+
                                     {task.responsible && (
                                       <span className="text-[8px] text-slate-500 flex items-center gap-1">
                                         {responsibleMember?.photoUrl ? (

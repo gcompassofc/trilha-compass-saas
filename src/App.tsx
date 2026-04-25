@@ -41,6 +41,8 @@ export default function App() {
     return () => unsubAuth();
   }, []);
 
+
+
   // Real-time synchronization with Firestore
   useEffect(() => {
     if (!user) return;

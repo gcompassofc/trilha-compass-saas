@@ -200,8 +200,11 @@ export default function WeeklyPlanner({
                           className={`group p-4 rounded-2xl border transition-all cursor-grab active:cursor-grabbing ${
                             task.completed 
                               ? 'bg-emerald-500/[0.03] border-emerald-500/10' 
-                              : 'bg-white/[0.03] border-white/5 hover:border-white/10 hover:bg-white/[0.05] shadow-lg shadow-black/20'
+                              : client 
+                                ? 'bg-white/[0.03] border-white/5 hover:border-white/10 hover:bg-white/[0.05] shadow-lg shadow-black/20'
+                                : 'bg-amber-500/[0.02] border-amber-500/10 hover:border-amber-500/30 hover:bg-amber-500/[0.04] shadow-lg shadow-amber-500/5'
                           }`}
+                          style={!task.completed && client ? { borderLeft: `4px solid ${client.color}` } : {}}
                         >
                           <div className="flex flex-col gap-3">
                             <div className="flex items-start gap-3">
@@ -210,23 +213,31 @@ export default function WeeklyPlanner({
                                 className="mt-0.5 flex-shrink-0"
                               >
                                 {task.completed ? (
-                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" />
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+
                                 ) : (
-                                  <Circle className="w-5 h-5 text-slate-700 group-hover:text-slate-400 transition-colors" />
+                                  <Circle className={`w-5 h-5 transition-colors ${client ? 'text-slate-700' : 'text-amber-500/40'} group-hover:text-slate-400`} />
                                 )}
                               </button>
                               
                               <div className="flex-1 min-w-0" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  {!client && !task.completed && (
+                                    <span className="text-[8px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/20">
+                                      PONTUAL
+                                    </span>
+                                  )}
+                                  {client && !task.completed && (
+                                    <span className="text-[8px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded bg-white/5" style={{ color: client.color, border: `1px solid ${client.color}30` }}>
+                                      {client.name}
+                                    </span>
+                                  )}
+                                </div>
                                 <p className={`text-[13px] leading-relaxed break-words font-medium cursor-pointer ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
                                   {task.title}
                                 </p>
                                 
                                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                                  {client && (
-                                    <span className="text-[9px] uppercase font-bold tracking-[0.1em] px-2 py-0.5 rounded bg-white/5" style={{ color: client.color }}>
-                                      {client.name}
-                                    </span>
-                                  )}
                                   {task.responsible && (() => {
                                     const member = teamMembers.find(m => m.id === task.responsible || m.name === task.responsible);
                                     return (
@@ -247,6 +258,7 @@ export default function WeeklyPlanner({
                                   )}
                                 </div>
                               </div>
+
 
                               <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
                                 <button onClick={() => onDeleteTask(task.id)} className="p-1 text-slate-600 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -346,13 +358,18 @@ export default function WeeklyPlanner({
                         <select
                           value={selectedClientId}
                           onChange={(e) => setSelectedClientId(e.target.value)}
-                          className="w-full bg-slate-900/50 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 appearance-none"
+                          className={`w-full border rounded-xl px-3 py-2 text-xs font-bold transition-all focus:outline-none focus:ring-2 appearance-none ${
+                            selectedClientId === 'standalone' 
+                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-500 focus:ring-amber-500/20' 
+                              : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400 focus:ring-indigo-500/20'
+                          }`}
                         >
-                          <option value="standalone">Demanda Pontual (Extra)</option>
+                          <option value="standalone">⚡ Demanda Pontual (Extra)</option>
                           {clients.map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
+                            <option key={c.id} value={c.id}>📁 Cliente: {c.name}</option>
                           ))}
                         </select>
+
 
                         {selectedClientId !== 'standalone' ? (
                           <div className="space-y-2">
@@ -394,11 +411,12 @@ export default function WeeklyPlanner({
                           <button 
                             onClick={() => handleAddTask(day)}
                             disabled={!newTaskTitle.trim()}
-                            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-600/10"
+                            className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:hover:bg-amber-600 text-white py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-amber-600/20"
                           >
-                            Agendar Demanda
+                            Agendar Demanda Pontual
                           </button>
                         )}
+
                       </motion.div>
                     ) : (
                       <button

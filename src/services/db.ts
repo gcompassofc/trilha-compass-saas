@@ -108,3 +108,6 @@ export const dbService = {
     await deleteDoc(doc(db, TEAM_COLLECTION, id));
   }
 };
+
+
+

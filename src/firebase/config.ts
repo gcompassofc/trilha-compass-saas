@@ -13,9 +13,11 @@ const firebaseConfig = {
 
 // Debug log for Vercel
 if (!firebaseConfig.apiKey) {
-  console.error("Firebase API Key is missing! Check Vercel Environment Variables.");
+  console.error("Firebase API Key is missing! Check .env file.");
 }
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+
