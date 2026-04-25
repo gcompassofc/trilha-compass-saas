@@ -1,10 +1,9 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, Users, Image as ImageIcon, Upload, X, Edit2, Check } from 'lucide-react';
+import { Plus, Trash2, Users, Image as ImageIcon, X, Edit2, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TeamMember } from '../types';
 import GlassCard from '../components/GlassCard';
 import { dbService } from '../services/db';
-import { storageService } from '../services/storage';
 
 interface TeamManagementProps {
   teamMembers: TeamMember[];
@@ -13,58 +12,41 @@ interface TeamManagementProps {
 export default function TeamManagement({ teamMembers }: TeamManagementProps) {
   const [name, setName] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setName('');
     setPhotoUrl('');
-    setSelectedFile(null);
     setEditingId(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleEditClick = (member: TeamMember) => {
     setName(member.name);
     setPhotoUrl(member.photoUrl || '');
     setEditingId(member.id);
-    setSelectedFile(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSaveMember = async () => {
     if (!name.trim()) return;
-    setIsUploading(true);
 
     try {
-      let finalPhotoUrl = photoUrl;
-
-      // Se houver um arquivo selecionado, faz o upload primeiro
-      if (selectedFile) {
-        finalPhotoUrl = await storageService.uploadImage(selectedFile, 'team');
-      }
-
       if (editingId) {
         await dbService.updateTeamMember({
           id: editingId,
           name: name.trim(),
-          photoUrl: finalPhotoUrl || undefined
+          photoUrl: photoUrl || undefined
         });
       } else {
         await dbService.addTeamMember({
           name: name.trim(),
-          photoUrl: finalPhotoUrl || undefined
+          photoUrl: photoUrl || undefined
         });
       }
-      
       resetForm();
     } catch (error) {
       console.error("Erro ao salvar membro:", error);
-      alert("Erro ao salvar a imagem ou os dados do membro. Verifique as regras do Firebase Storage.");
-    } finally {
-      setIsUploading(false);
+      alert("Erro ao salvar os dados do membro.");
     }
   };
 
@@ -72,12 +54,6 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
     if (confirm("Tem certeza que deseja remover este membro?")) {
       await dbService.deleteTeamMember(id);
       if (editingId === id) resetForm();
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
     }
   };
 
@@ -113,50 +89,22 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
               />
             </div>
             <div className="flex-1 space-y-2 w-full">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Foto do Perfil (Upload ou URL)</label>
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Cole a URL ou envie um arquivo"
-                    value={selectedFile ? selectedFile.name : photoUrl}
-                    onChange={(e) => {
-                      setPhotoUrl(e.target.value);
-                      setSelectedFile(null); // Limpa o arquivo se o usuário digitar algo
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSaveMember()}
-                    className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
-                  />
-                  
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                  />
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="bg-white/10 hover:bg-white/20 text-indigo-300 px-3 py-2.5 rounded-xl transition-all shadow-lg flex items-center justify-center"
-                    title="Fazer Upload de Imagem"
-                  >
-                    <Upload className="w-5 h-5" />
-                  </button>
-
-                  <button 
-                    onClick={handleSaveMember}
-                    disabled={isUploading}
-                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center min-w-[50px]"
-                  >
-                    {isUploading ? (
-                      <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                    ) : editingId ? (
-                      <Check className="w-5 h-5" />
-                    ) : (
-                      <Plus className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase">URL da Foto (Opcional)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={photoUrl}
+                  onChange={(e) => setPhotoUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveMember()}
+                  className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                />
+                <button 
+                  onClick={handleSaveMember}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center min-w-[50px]"
+                >
+                  {editingId ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                </button>
               </div>
             </div>
           </div>
