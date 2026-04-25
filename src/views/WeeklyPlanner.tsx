@@ -305,6 +305,7 @@ clients,
                                       {subTasksDone}/{subTasksTotal}
                                     </span>
                                   )}
+                                  <TaskTimer task={task} onUpdateTask={onUpdateTask} />
                                 </div>
                               </div>
 
