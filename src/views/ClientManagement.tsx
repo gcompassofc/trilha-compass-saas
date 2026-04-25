@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Plus, Trash2, Building2, ChevronRight, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Trash2, Building2, ChevronRight, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Upload, Save } from 'lucide-react';
+import { storageService } from '../services/storage';
 import { motion, AnimatePresence } from 'motion/react';
 import { Client, MasterTask, Priority, SubTask, TeamMember } from '../types';
 import GlassCard from '../components/GlassCard';
@@ -22,6 +23,56 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
   const [subTasks, setSubTasks] = useState<Omit<SubTask, 'id'>[]>([]);
   const [newSubTaskTitle, setNewSubTaskTitle] = useState('');
   const [editSubTaskTitle, setEditSubTaskTitle] = useState('');
+  
+  const [isEditingClient, setIsEditingClient] = useState(false);
+  const [editClientName, setEditClientName] = useState('');
+  const [editClientColor, setEditClientColor] = useState('');
+  const [editClientLogoUrl, setEditClientLogoUrl] = useState('');
+  const [selectedClientFile, setSelectedClientFile] = useState<File | null>(null);
+  const [isUploadingClient, setIsUploadingClient] = useState(false);
+  const clientFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleEditClientToggle = (client: Client) => {
+    if (isEditingClient && selectedClientId === client.id) {
+      setIsEditingClient(false);
+    } else {
+      setEditClientName(client.name);
+      setEditClientColor(client.color);
+      setEditClientLogoUrl(client.logoUrl || client.logo || '');
+      setSelectedClientFile(null);
+      setIsEditingClient(true);
+    }
+  };
+
+  const handleSaveClient = async (client: Client) => {
+    if (!editClientName.trim()) return;
+    setIsUploadingClient(true);
+    try {
+      let finalLogoUrl = editClientLogoUrl;
+      if (selectedClientFile) {
+        finalLogoUrl = await storageService.uploadImage(selectedClientFile, 'clients');
+      }
+      onUpdateClient({
+        ...client,
+        name: editClientName,
+        color: editClientColor,
+        logoUrl: finalLogoUrl,
+        logo: finalLogoUrl ? '' : '🏢'
+      });
+      setIsEditingClient(false);
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao salvar cliente.");
+    } finally {
+      setIsUploadingClient(false);
+    }
+  };
+
+  const handleClientFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedClientFile(e.target.files[0]);
+    }
+  };
 
   const handleAddClient = () => {
     if (!newClientName.trim()) return;
@@ -170,7 +221,7 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
               <motion.button
                 key={client.id}
                 layout
-                onClick={() => setSelectedClientId(client.id)}
+                onClick={() => { setSelectedClientId(client.id); setIsEditingClient(false); }}
                 className={`w-full group flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
                   selectedClientId === client.id 
                     ? 'bg-indigo-600/10 border-indigo-500/50 shadow-[0_0_20px_rgba(79,70,229,0.15)]' 

@@ -21,6 +21,7 @@ export interface Client {
   id: string;
   name: string;
   logo: string;
+  logoUrl?: string;
   masterTasks: MasterTask[];
   color: string;
 }
