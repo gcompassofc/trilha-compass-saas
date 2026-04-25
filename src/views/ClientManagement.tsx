@@ -26,7 +26,7 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
   const handleAddClient = () => {
     if (!newClientName.trim()) return;
     const client: Client = {
-      id: crypto.randomUUID(),
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)),
       name: newClientName,
       logo: '🏢',
       masterTasks: [],
@@ -42,12 +42,12 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
     if (!client) return;
 
     const newTask: MasterTask = {
-      id: crypto.randomUUID(),
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)),
       title: newTaskTitle,
       completed: false,
       priority: newTaskPriority,
       responsible: newTaskResponsible || undefined,
-      subTasks: subTasks.map(st => ({ ...st, id: crypto.randomUUID() }))
+      subTasks: subTasks.map(st => ({ ...st, id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)) }))
     };
 
     onUpdateClient({
@@ -77,7 +77,7 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
     const client = clients.find(c => c.id === clientId);
     if (!client) return;
 
-    const newSub: SubTask = { id: crypto.randomUUID(), title: editSubTaskTitle, completed: false };
+    const newSub: SubTask = { id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)), title: editSubTaskTitle, completed: false };
     
     onUpdateClient({
       ...client,

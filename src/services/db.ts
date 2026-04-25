@@ -22,6 +22,12 @@ const TEAM_COLLECTION = 'teamMembers';
 // Helper to remove undefined fields which Firestore rejects
 const sanitize = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
+const handleError = (error: any, context: string) => {
+  console.error(`Firebase Error (${context}):`, error);
+  alert(`Erro no Banco de Dados (${context}):\n${error.message}\n\nPossíveis causas:\n1. Regras do Firestore bloqueando acesso (Permission Denied)\n2. Faltando índice no Firestore (Index Required)`);
+  throw error;
+};
+
 export const dbService = {
   // Clients
   subscribeToClients: (callback: (clients: Client[]) => void) => {
@@ -32,31 +38,36 @@ export const dbService = {
         id: doc.id
       })) as Client[];
       callback(clients);
-    }, (error) => console.error("Error fetching clients:", error));
+    }, (error) => handleError(error, "Listar Clientes"));
   },
 
   addClient: async (client: Omit<Client, 'id'>) => {
-    const docRef = await addDoc(collection(db, CLIENTS_COLLECTION), sanitize(client));
-    return docRef.id;
+    try {
+      const docRef = await addDoc(collection(db, CLIENTS_COLLECTION), sanitize(client));
+      return docRef.id;
+    } catch (e) { handleError(e, "Adicionar Cliente"); }
   },
 
   updateClient: async (client: Client) => {
-    const { id, ...data } = client;
-    await updateDoc(doc(db, CLIENTS_COLLECTION, id), sanitize(data));
+    try {
+      const { id, ...data } = client;
+      await updateDoc(doc(db, CLIENTS_COLLECTION, id), sanitize(data));
+    } catch (e) { handleError(e, "Atualizar Cliente"); }
   },
 
   deleteClient: async (id: string) => {
-    const batch = writeBatch(db);
-    batch.delete(doc(db, CLIENTS_COLLECTION, id));
-    
-    // Find all tasks associated with this client to delete them as well
-    const q = query(collection(db, TASKS_COLLECTION), where('clientId', '==', id));
-    const querySnapshot = await getDocs(q);
-    querySnapshot.forEach((document) => {
-      batch.delete(document.ref);
-    });
+    try {
+      const batch = writeBatch(db);
+      batch.delete(doc(db, CLIENTS_COLLECTION, id));
+      
+      const q = query(collection(db, TASKS_COLLECTION), where('clientId', '==', id));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach((document) => {
+        batch.delete(document.ref);
+      });
 
-    await batch.commit();
+      await batch.commit();
+    } catch (e) { handleError(e, "Deletar Cliente"); }
   },
 
   // Weekly Tasks
@@ -72,32 +83,40 @@ export const dbService = {
         id: doc.id
       })) as WeeklyTask[];
       callback(tasks);
-    }, (error) => console.error("Error fetching tasks:", error));
+    }, (error) => handleError(error, "Listar Demandas"));
   },
 
   addTask: async (task: Omit<WeeklyTask, 'id'>) => {
-    const docRef = await addDoc(collection(db, TASKS_COLLECTION), sanitize(task));
-    return docRef.id;
+    try {
+      const docRef = await addDoc(collection(db, TASKS_COLLECTION), sanitize(task));
+      return docRef.id;
+    } catch (e) { handleError(e, "Adicionar Demanda"); }
   },
 
   updateTask: async (task: WeeklyTask) => {
-    const { id, ...data } = task;
-    await updateDoc(doc(db, TASKS_COLLECTION, id), sanitize(data));
+    try {
+      const { id, ...data } = task;
+      await updateDoc(doc(db, TASKS_COLLECTION, id), sanitize(data));
+    } catch (e) { handleError(e, "Atualizar Demanda"); }
   },
 
   deleteTask: async (id: string) => {
-    await deleteDoc(doc(db, TASKS_COLLECTION, id));
+    try {
+      await deleteDoc(doc(db, TASKS_COLLECTION, id));
+    } catch (e) { handleError(e, "Deletar Demanda"); }
   },
 
   // Batch update for reordering
   reorderTasks: async (tasks: WeeklyTask[]) => {
-    const batch = writeBatch(db);
-    for (const task of tasks) {
-      const { id, ...data } = task;
-      const docRef = doc(db, TASKS_COLLECTION, id);
-      batch.update(docRef, sanitize(data));
-    }
-    await batch.commit();
+    try {
+      const batch = writeBatch(db);
+      for (const task of tasks) {
+        const { id, ...data } = task;
+        const docRef = doc(db, TASKS_COLLECTION, id);
+        batch.update(docRef, sanitize(data));
+      }
+      await batch.commit();
+    } catch (e) { handleError(e, "Reordenar Demandas"); }
   },
 
   // Team Members
@@ -109,21 +128,27 @@ export const dbService = {
         id: doc.id
       })) as TeamMember[];
       callback(members);
-    }, (error) => console.error("Error fetching team:", error));
+    }, (error) => handleError(error, "Listar Equipe"));
   },
 
   addTeamMember: async (member: Omit<TeamMember, 'id'>) => {
-    const docRef = await addDoc(collection(db, TEAM_COLLECTION), sanitize(member));
-    return docRef.id;
+    try {
+      const docRef = await addDoc(collection(db, TEAM_COLLECTION), sanitize(member));
+      return docRef.id;
+    } catch (e) { handleError(e, "Adicionar Membro"); }
   },
 
   updateTeamMember: async (member: TeamMember) => {
-    const { id, ...data } = member;
-    await updateDoc(doc(db, TEAM_COLLECTION, id), sanitize(data));
+    try {
+      const { id, ...data } = member;
+      await updateDoc(doc(db, TEAM_COLLECTION, id), sanitize(data));
+    } catch (e) { handleError(e, "Atualizar Membro"); }
   },
 
   deleteTeamMember: async (id: string) => {
-    await deleteDoc(doc(db, TEAM_COLLECTION, id));
+    try {
+      await deleteDoc(doc(db, TEAM_COLLECTION, id));
+    } catch (e) { handleError(e, "Deletar Membro"); }
   }
 };
 
