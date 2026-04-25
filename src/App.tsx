@@ -77,10 +77,6 @@ export default function App() {
 
   const handleDeleteClient = async (id: string) => {
     await dbService.deleteClient(id);
-    const tasksToDelete = weeklyTasks.filter(t => t.clientId === id);
-    for (const task of tasksToDelete) {
-      await dbService.deleteTask(task.id);
-    }
   };
 
   const handleUpdateClient = async (updated: Client) => {
