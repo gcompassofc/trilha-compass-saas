@@ -181,6 +181,8 @@ export default function App() {
                 onAddClient={handleAddClient}
                 onDeleteClient={handleDeleteClient}
                 onUpdateClient={handleUpdateClient}
+                currentWeekId={currentWeekId}
+                onAddWeeklyTask={handleAddTask}
               />
             </motion.div>
           )}
