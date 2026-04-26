@@ -373,10 +373,19 @@ clients,
                                   )}
                                 </button>
 
-                                <div className="flex-1 min-w-0 flex items-center gap-3 cursor-pointer" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
+                                <div className="flex-1 min-w-0 flex items-center gap-2 cursor-pointer" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
                                   <span className={`text-[13px] font-bold truncate ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
                                     {task.title}
                                   </span>
+                                  {client ? (
+                                    <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/5 whitespace-nowrap" style={{ color: client.color }}>
+                                      {client.name}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 whitespace-nowrap">
+                                      PONTUAL
+                                    </span>
+                                  )}
                                   {subTasksTotal > 0 && !isExpanded && (
                                     <span className="text-[10px] text-slate-500 flex items-center gap-1 font-mono">
                                       <ListTodo className="w-3 h-3" /> {subTasksDone}/{subTasksTotal}
