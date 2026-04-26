@@ -10,6 +10,8 @@ import WeeklyPlanner from './views/WeeklyPlanner';
 import ClientManagement from './views/ClientManagement';
 import TeamManagement from './views/TeamManagement';
 import Login from './components/Login';
+import GlobalSearch from './components/GlobalSearch';
+import { Search } from 'lucide-react';
 import { Client, WeeklyTask, DayOfWeek, TeamMember } from './types';
 import { dbService } from './services/db';
 import { auth } from './firebase/config';
@@ -31,6 +33,19 @@ export default function App() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [currentWeekId, setCurrentWeekId] = useState(getWeekId(new Date()));
   const [loading, setLoading] = useState(true);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Keyboard Shortcut for Search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Auth State
   useEffect(() => {
@@ -135,8 +150,25 @@ export default function App() {
 
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
+      <GlobalSearch 
+        isOpen={isSearchOpen} 
+        onClose={() => setIsSearchOpen(false)} 
+        clients={clients} 
+        weeklyTasks={weeklyTasks} 
+        teamMembers={teamMembers} 
+      />
+
       <main className="flex-1 p-8 overflow-y-auto h-screen relative z-10 transition-all duration-500">
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-between items-center mb-4">
+          <button 
+            onClick={() => setIsSearchOpen(true)}
+            className="flex items-center gap-2 text-slate-400 hover:text-white bg-white/5 border border-white/10 px-4 py-1.5 rounded-full text-sm font-medium transition-all hover:bg-white/10 shadow-lg shadow-black/20"
+          >
+            <Search className="w-4 h-4" />
+            Pesquisar...
+            <span className="text-[10px] font-mono opacity-50 ml-2">Ctrl+K</span>
+          </button>
+          
           <button 
             onClick={() => auth.signOut()}
             className="text-white/40 hover:text-white/70 text-xs font-medium px-3 py-1 rounded-full border border-white/10"
