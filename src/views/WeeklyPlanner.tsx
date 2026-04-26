@@ -461,16 +461,27 @@ clients,
                                     <button onClick={() => addSubTask(task)} className="p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500/30"><Plus className="w-3 h-3" /></button>
                                   </div>
 
-                                  <div className="flex items-center gap-2 pt-2 pb-2">
-                                    <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Responsável:</span>
-                                    <select 
-                                      value={task.responsible || ''}
-                                      onChange={(e) => changeTaskResponsible(task, e.target.value)}
-                                      className="bg-transparent text-[10px] text-slate-300 focus:outline-none border-none p-0 cursor-pointer hover:text-indigo-400"
-                                    >
-                                      <option value="">Ninguém</option>
-                                      {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                    </select>
+                                  <div className="flex flex-wrap items-center gap-4 pt-2 pb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Responsável:</span>
+                                      <select 
+                                        value={task.responsible || ''}
+                                        onChange={(e) => changeTaskResponsible(task, e.target.value)}
+                                        className="bg-transparent text-[10px] text-slate-300 focus:outline-none border-none p-0 cursor-pointer hover:text-indigo-400"
+                                      >
+                                        <option value="">Ninguém</option>
+                                        {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                      </select>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Data:</span>
+                                      <input 
+                                        type="date"
+                                        value={task.dueDate || ''}
+                                        onChange={(e) => onUpdateTask({ ...task, dueDate: e.target.value })}
+                                        className="bg-transparent text-[10px] text-slate-300 focus:outline-none border-none p-0 cursor-pointer hover:text-indigo-400"
+                                      />
+                                    </div>
                                   </div>
 
                                   {/* Comentários */}

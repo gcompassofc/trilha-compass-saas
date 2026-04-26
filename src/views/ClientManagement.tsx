@@ -530,16 +530,33 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                         exit={{ height: 0, opacity: 0 }}
                                         className="pt-4 mt-3 border-t border-white/5 space-y-3 overflow-hidden"
                                       >
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Responsável:</span>
-                                          <select 
-                                            value={task.responsible || ''}
-                                            onChange={(e) => changeExistingTaskResponsible(selectedClient.id, task, e.target.value)}
-                                            className="bg-transparent text-[10px] text-slate-300 focus:outline-none border-none p-0 cursor-pointer hover:text-indigo-400"
-                                          >
-                                            <option value="">Ninguém</option>
-                                            {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                          </select>
+                                        <div className="flex flex-wrap items-center gap-4">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Responsável:</span>
+                                            <select 
+                                              value={task.responsible || ''}
+                                              onChange={(e) => changeExistingTaskResponsible(selectedClient.id, task, e.target.value)}
+                                              className="bg-transparent text-[10px] text-slate-300 focus:outline-none border-none p-0 cursor-pointer hover:text-indigo-400"
+                                            >
+                                              <option value="">Ninguém</option>
+                                              {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                            </select>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Data:</span>
+                                            <input 
+                                              type="date"
+                                              value={task.dueDate || ''}
+                                              onChange={(e) => {
+                                                const updated = { ...task, dueDate: e.target.value };
+                                                onUpdateClient({
+                                                  ...selectedClient,
+                                                  masterTasks: selectedClient.masterTasks.map(t => t.id === task.id ? updated : t)
+                                                });
+                                              }}
+                                              className="bg-transparent text-[10px] text-slate-300 focus:outline-none border-none p-0 cursor-pointer hover:text-indigo-400"
+                                            />
+                                          </div>
                                         </div>
 
                                         <div className="space-y-2">
