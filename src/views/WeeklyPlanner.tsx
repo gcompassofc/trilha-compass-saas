@@ -251,7 +251,7 @@ clients,
             const isToday = new Date().toLocaleDateString('pt-BR', { weekday: 'long' }).toLowerCase().includes(day.toLowerCase().slice(0, 3));
 
             return (
-              <div key={day} className={`${viewMode === 'kanban' ? 'w-[360px]' : 'w-full'} flex flex-col gap-4 relative ${isToday ? 'z-10' : ''}`}>
+              <div key={day} className={`${viewMode === 'kanban' ? 'w-[280px] shrink-0' : 'w-full'} flex flex-col gap-4 relative ${isToday ? 'z-10' : ''}`}>
                 <div className="flex items-center justify-between px-3">
                   <div className="flex items-center gap-3">
                     <h2 className={`font-bold text-xl ${isToday ? 'text-indigo-400 underline underline-offset-8 decoration-indigo-500/30' : 'text-slate-200'}`}>{day}</h2>
@@ -330,13 +330,13 @@ clients,
                                     {task.responsible && (() => {
                                       const member = teamMembers.find(m => m.id === task.responsible || m.name === task.responsible);
                                       return (
-                                        <span className="text-[9px] text-slate-400 flex items-center gap-1.5 bg-white/5 pl-1 pr-2 py-0.5 rounded-full">
+                                        <span className="text-[9px] text-slate-400 flex items-center gap-1.5 bg-white/5 pl-1 pr-2 py-0.5 rounded-full max-w-[120px]">
                                           {member?.photoUrl ? (
-                                            <img src={member.photoUrl} alt={member?.name} className="w-3.5 h-3.5 rounded-full object-cover" />
+                                            <img src={member.photoUrl} alt={member?.name} className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
                                           ) : (
-                                            <User2 className="w-3 h-3 ml-1" />
+                                            <User2 className="w-3 h-3 ml-1 shrink-0" />
                                           )}
-                                          {member ? member.name : task.responsible}
+                                          <span className="truncate">{member ? member.name : task.responsible}</span>
                                         </span>
                                       );
                                     })()}
