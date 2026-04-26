@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid, ListTodo, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember } from '../types';
 
@@ -282,86 +282,130 @@ clients,
                           value={task}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className={`group p-3 rounded-2xl border transition-all cursor-grab active:cursor-grabbing ${
-                            task.completed 
-                              ? 'bg-emerald-500/[0.03] border-emerald-500/10' 
-                              : client 
-                                ? 'bg-white/[0.03] border-white/5 hover:border-white/10 hover:bg-white/[0.05] shadow-lg shadow-black/20'
-                                : 'bg-amber-500/[0.02] border-amber-500/10 hover:border-amber-500/30 hover:bg-amber-500/[0.04] shadow-lg shadow-amber-500/5'
+                          className={`group transition-all cursor-grab active:cursor-grabbing ${
+                            viewMode === 'kanban' 
+                              ? `p-3 rounded-2xl border ${
+                                  task.completed 
+                                    ? 'bg-emerald-500/[0.03] border-emerald-500/10' 
+                                    : client 
+                                      ? 'bg-white/[0.03] border-white/5 hover:border-white/10 hover:bg-white/[0.05] shadow-lg shadow-black/20'
+                                      : 'bg-amber-500/[0.02] border-amber-500/10 hover:border-amber-500/30 hover:bg-amber-500/[0.04] shadow-lg shadow-amber-500/5'
+                                }`
+                              : `py-1.5 px-1 border-b border-white/5 hover:bg-white/[0.02] ${isExpanded ? 'bg-white/5 rounded-xl px-3 border-transparent my-1' : ''}`
                           }`}
-                          style={!task.completed && client ? { borderLeft: `4px solid ${client.color}` } : {}}
+                          style={viewMode === 'kanban' && !task.completed && client ? { borderLeft: `4px solid ${client.color}` } : {}}
                         >
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-start gap-3">
-                              <button 
-                                onClick={() => toggleTask(task)}
-                                className="mt-0.5 flex-shrink-0"
-                              >
-                                {task.completed ? (
-                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-
-                                ) : (
-                                  <Circle className={`w-5 h-5 transition-colors ${client ? 'text-slate-700' : 'text-amber-500/40'} group-hover:text-slate-400`} />
-                                )}
-                              </button>
-                              
-                              <div className="flex-1 min-w-0" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
-                                <div className="flex items-center gap-2 mb-1">
-                                  {!client && !task.completed && (
-                                    <span className="text-[8px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/20">
-                                      PONTUAL
-                                    </span>
+                          <div className={`flex ${viewMode === 'kanban' ? 'flex-col gap-2' : 'flex-col'}`}>
+                            {viewMode === 'kanban' ? (
+                              <div className="flex items-start gap-3">
+                                <button 
+                                  onClick={() => toggleTask(task)}
+                                  className="mt-0.5 flex-shrink-0"
+                                >
+                                  {task.completed ? (
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                  ) : (
+                                    <Circle className={`w-5 h-5 transition-colors ${client ? 'text-slate-700' : 'text-amber-500/40'} group-hover:text-slate-400`} />
                                   )}
-                                  {client && !task.completed && (
-                                    <span className="text-[8px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded bg-white/5" style={{ color: client.color, border: `1px solid ${client.color}30` }}>
-                                      {client.name}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className={`text-[13px] leading-relaxed break-words font-medium cursor-pointer ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
-                                  {task.title}
-                                </p>
+                                </button>
                                 
-                                <div className="mt-3 flex flex-wrap items-center gap-2">
-                                  {task.responsible && (() => {
-                                    const member = teamMembers.find(m => m.id === task.responsible || m.name === task.responsible);
-                                    return (
-                                      <span className="text-[9px] text-slate-400 flex items-center gap-1.5 bg-white/5 pl-1 pr-2 py-0.5 rounded-full">
-                                        {member?.photoUrl ? (
-                                          <img src={member.photoUrl} alt={member?.name} className="w-3.5 h-3.5 rounded-full object-cover" />
-                                        ) : (
-                                          <User2 className="w-3 h-3 ml-1" />
-                                        )}
-                                        {member ? member.name : task.responsible}
+                                <div className="flex-1 min-w-0" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {!client && !task.completed && (
+                                      <span className="text-[8px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/20">
+                                        PONTUAL
                                       </span>
-                                    );
-                                  })()}
-                                  {subTasksTotal > 0 && (
-                                    <span className="text-[9px] text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded">
-                                      {subTasksDone}/{subTasksTotal}
-                                    </span>
-                                  )}
-                                  <TaskTimer task={task} onUpdateTask={onUpdateTask} />
+                                    )}
+                                    {client && !task.completed && (
+                                      <span className="text-[8px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded bg-white/5" style={{ color: client.color, border: `1px solid ${client.color}30` }}>
+                                        {client.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className={`text-[13px] leading-relaxed break-words font-medium cursor-pointer ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                                    {task.title}
+                                  </p>
+                                  
+                                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                                    {task.responsible && (() => {
+                                      const member = teamMembers.find(m => m.id === task.responsible || m.name === task.responsible);
+                                      return (
+                                        <span className="text-[9px] text-slate-400 flex items-center gap-1.5 bg-white/5 pl-1 pr-2 py-0.5 rounded-full">
+                                          {member?.photoUrl ? (
+                                            <img src={member.photoUrl} alt={member?.name} className="w-3.5 h-3.5 rounded-full object-cover" />
+                                          ) : (
+                                            <User2 className="w-3 h-3 ml-1" />
+                                          )}
+                                          {member ? member.name : task.responsible}
+                                        </span>
+                                      );
+                                    })()}
+                                    {subTasksTotal > 0 && (
+                                      <span className="text-[9px] text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded">
+                                        {subTasksDone}/{subTasksTotal}
+                                      </span>
+                                    )}
+                                    <TaskTimer task={task} onUpdateTask={onUpdateTask} />
+                                  </div>
                                 </div>
-                              </div>
 
-
-                              <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                <button onClick={() => onDeleteTask(task.id)} className="p-1 text-slate-600 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
-                                <div className="relative group/move">
-                                  <button className="p-1 text-slate-600 hover:text-indigo-400"><Calendar className="w-3.5 h-3.5" /></button>
-                                  <div className="absolute right-0 top-0 hidden group-hover/move:flex flex-col bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-50 py-1 min-w-[120px]">
-                                    {DAYS.filter(d => d !== day).map(d => (
-                                      <button key={d} onClick={() => moveTaskToDay(task, d)} className="px-3 py-1.5 text-[10px] text-left text-slate-400 hover:bg-white/5 hover:text-white">{d}</button>
-                                    ))}
+                                <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                  <button onClick={() => onDeleteTask(task.id)} className="p-1 text-slate-600 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  <div className="relative group/move">
+                                    <button className="p-1 text-slate-600 hover:text-indigo-400"><Calendar className="w-3.5 h-3.5" /></button>
+                                    <div className="absolute right-0 top-0 hidden group-hover/move:flex flex-col bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-50 py-1 min-w-[120px]">
+                                      {DAYS.filter(d => d !== day).map(d => (
+                                        <button key={d} onClick={() => moveTaskToDay(task, d)} className="px-3 py-1.5 text-[10px] text-left text-slate-400 hover:bg-white/5 hover:text-white">{d}</button>
+                                      ))}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
+                            ) : (
+                              <div className="flex items-center gap-2 w-full">
+                                <button onClick={() => toggleTask(task)} className="flex-shrink-0">
+                                  {task.completed ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                  ) : client ? (
+                                    <div className="w-2.5 h-2.5 rounded-full mx-0.5 shadow-[0_0_8px_currentColor]" style={{ backgroundColor: client.color, color: client.color }} />
+                                  ) : (
+                                    <div className="w-2.5 h-2.5 rounded-full mx-0.5 bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+                                  )}
+                                </button>
+
+                                <div className="flex-1 min-w-0 flex items-center gap-3 cursor-pointer" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
+                                  <span className={`text-[13px] font-bold truncate ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                                    {task.title}
+                                  </span>
+                                  {subTasksTotal > 0 && !isExpanded && (
+                                    <span className="text-[10px] text-slate-500 flex items-center gap-1 font-mono">
+                                      <ListTodo className="w-3 h-3" /> {subTasksDone}/{subTasksTotal}
+                                    </span>
+                                  )}
+                                  {(task.comments?.length || 0) > 0 && !isExpanded && (
+                                    <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                                      <MessageSquare className="w-3 h-3" /> {task.comments?.length}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
+                                  <button onClick={() => onDeleteTask(task.id)} className="p-1 text-slate-600 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  <div className="relative group/move">
+                                    <button className="p-1 text-slate-600 hover:text-indigo-400"><Calendar className="w-3.5 h-3.5" /></button>
+                                    <div className="absolute right-0 top-full mt-1 hidden group-hover/move:flex flex-col bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-50 py-1 min-w-[120px]">
+                                      {DAYS.filter(d => d !== day).map(d => (
+                                        <button key={d} onClick={() => moveTaskToDay(task, d)} className="px-3 py-1.5 text-[10px] text-left text-slate-400 hover:bg-white/5 hover:text-white">{d}</button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
 
                             {/* Progress Bar for Subtasks */}
-                            {subTasksTotal > 0 && (
-                              <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                            {subTasksTotal > 0 && (viewMode === 'kanban' || isExpanded) && (
+                              <div className={`w-full h-1 bg-white/5 rounded-full overflow-hidden ${viewMode === 'list' ? 'mt-2' : ''}`}>
                                 <motion.div 
                                   className="h-full bg-indigo-500"
                                   initial={{ width: 0 }}
