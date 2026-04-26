@@ -14,8 +14,9 @@ import GlobalSearch from './components/GlobalSearch';
 import { Search } from 'lucide-react';
 import { Client, WeeklyTask, DayOfWeek, TeamMember } from './types';
 import { dbService } from './services/db';
-import { auth } from './firebase/config';
+import { auth, db } from './firebase/config';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { collection, getDocs, query, where, updateDoc } from 'firebase/firestore';
 
 const getWeekId = (date: Date) => {
   const d = new Date(date);
@@ -23,6 +24,18 @@ const getWeekId = (date: Date) => {
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(d.setDate(diff));
   return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+};
+
+const getWeekIdFromDateString = (dateStr: string) => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return getWeekId(new Date(year, month - 1, day));
+};
+
+const getDayOfWeekFromDateString = (dateStr: string): DayOfWeek => {
+  const days: DayOfWeek[] = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  return days[d.getDay()];
 };
 
 export default function App() {
@@ -95,7 +108,43 @@ export default function App() {
   };
 
   const handleUpdateClient = async (updated: Client) => {
+    // 1. Update the client in Firebase
     await dbService.updateClient(updated);
+
+    // 2. Sync changes down to WeeklyTasks (Two-way sync)
+    const oldClient = clients.find(c => c.id === updated.id);
+    if (oldClient) {
+      updated.masterTasks.forEach(async (newMt) => {
+        const oldMt = oldClient.masterTasks.find(t => t.id === newMt.id);
+        // If it exists and has changes
+        if (oldMt && JSON.stringify(oldMt) !== JSON.stringify(newMt)) {
+          const q = query(collection(db, 'weeklyTasks'), where('masterTaskId', '==', newMt.id));
+          const snapshot = await getDocs(q);
+          
+          snapshot.forEach(docSnap => {
+            const wt = docSnap.data() as WeeklyTask;
+            let wtUpdated = {
+               ...wt,
+               title: newMt.title,
+               completed: newMt.completed,
+               subTasks: newMt.subTasks,
+               responsible: newMt.responsible,
+               comments: newMt.comments,
+               dueDate: newMt.dueDate
+            };
+            
+            // If the date changed, we need to recalculate the weekId and day
+            if (newMt.dueDate && oldMt.dueDate !== newMt.dueDate) {
+               wtUpdated.weekId = getWeekIdFromDateString(newMt.dueDate);
+               wtUpdated.day = getDayOfWeekFromDateString(newMt.dueDate);
+            }
+            
+            // Note: using direct updateDoc to avoid cyclic loops with dbService.updateTask calling handleUpdateTask
+            updateDoc(docSnap.ref, JSON.parse(JSON.stringify(wtUpdated)));
+          });
+        }
+      });
+    }
   };
 
   const handleAddTask = async (task: Omit<WeeklyTask, 'id'>) => {
@@ -103,17 +152,29 @@ export default function App() {
   };
 
   const handleUpdateTask = async (updated: WeeklyTask) => {
+    // 1. If date changed via Planner card directly, sync its weekId and day
+    if (updated.dueDate) {
+       const newWeekId = getWeekIdFromDateString(updated.dueDate);
+       const newDay = getDayOfWeekFromDateString(updated.dueDate);
+       if (updated.weekId !== newWeekId || updated.day !== newDay) {
+          updated.weekId = newWeekId;
+          updated.day = newDay;
+       }
+    }
 
-    // Sync completion status with Client Backlog if linked
+    // 2. Sync full status with Client Backlog if linked (Two-way sync)
     if (updated.clientId && updated.masterTaskId) {
       const client = clients.find(c => c.id === updated.clientId);
       if (client) {
         const updatedMasterTasks = client.masterTasks.map(mt => 
           mt.id === updated.masterTaskId ? { 
             ...mt, 
+            title: updated.title,
             completed: updated.completed,
             subTasks: updated.subTasks,
-            responsible: updated.responsible
+            responsible: updated.responsible,
+            comments: updated.comments,
+            dueDate: updated.dueDate
           } : mt
         );
         await dbService.updateClient({ ...client, masterTasks: updatedMasterTasks });
