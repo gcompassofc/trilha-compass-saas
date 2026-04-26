@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember } from '../types';
 
@@ -77,6 +77,7 @@ clients,
   onDeleteTask, 
   onReorderTasks 
 }: WeeklyPlannerProps) {
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [addingTaskForDay, setAddingTaskForDay] = useState<DayOfWeek | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('standalone');
@@ -189,6 +190,22 @@ clients,
           </div>
         </div>
         <div className="hidden lg:flex gap-4 items-center bg-white/5 border border-white/5 px-4 py-2 rounded-2xl">
+          <div className="flex bg-black/20 rounded-lg p-1 border border-white/5 mr-4">
+            <button 
+              onClick={() => setViewMode('kanban')} 
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+              title="Visão Kanban"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setViewMode('list')} 
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+              title="Visão Lista"
+            >
+              <LayoutList className="w-4 h-4" />
+            </button>
+          </div>
           <div className="flex flex-col items-end">
             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Progresso</span>
             <span className="text-sm font-mono text-indigo-400">
@@ -205,8 +222,8 @@ clients,
         </div>
       </header>
 
-      <div className="flex-1 overflow-x-auto pb-8 -mx-8 px-8">
-        <div className="flex gap-6 min-w-max h-full">
+      <div className={`flex-1 pb-8 ${viewMode === 'kanban' ? 'overflow-x-auto -mx-8 px-8' : 'overflow-y-auto pr-4 custom-scrollbar'}`}>
+        <div className={`flex ${viewMode === 'kanban' ? 'gap-6 min-w-max h-full' : 'flex-col gap-8 max-w-5xl mx-auto w-full h-full'}`}>
           {DAYS.map((day) => {
             const dayTasks = weeklyTasks
               .filter(t => t.day === day)
@@ -215,7 +232,7 @@ clients,
             const isToday = new Date().toLocaleDateString('pt-BR', { weekday: 'long' }).toLowerCase().includes(day.toLowerCase().slice(0, 3));
 
             return (
-              <div key={day} className={`w-[360px] flex flex-col gap-4 relative ${isToday ? 'z-10' : ''}`}>
+              <div key={day} className={`${viewMode === 'kanban' ? 'w-[360px]' : 'w-full'} flex flex-col gap-4 relative ${isToday ? 'z-10' : ''}`}>
                 <div className="flex items-center justify-between px-3">
                   <div className="flex items-center gap-3">
                     <h2 className={`font-bold text-xl ${isToday ? 'text-indigo-400 underline underline-offset-8 decoration-indigo-500/30' : 'text-slate-200'}`}>{day}</h2>
@@ -226,7 +243,7 @@ clients,
                   </span>
                 </div>
 
-                <div className={`flex-1 glass-panel p-3 min-h-[550px] flex flex-col gap-3 transition-colors ${isToday ? 'border-indigo-500/20 bg-indigo-500/[0.03]' : ''}`}>
+                <div className={`flex-1 glass-panel p-3 flex flex-col gap-3 transition-colors ${viewMode === 'kanban' ? 'min-h-[550px]' : ''} ${isToday ? 'border-indigo-500/20 bg-indigo-500/[0.03]' : ''}`}>
                   <Reorder.Group 
                     axis="y" 
                     values={dayTasks} 

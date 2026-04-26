@@ -4,6 +4,22 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Client, MasterTask, Priority, SubTask, TeamMember, WeeklyTask, DayOfWeek } from '../types';
 import GlassCard from '../components/GlassCard';
 
+const getWeekIdFromDateString = (dateStr: string) => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  const dayOfWeekNum = d.getDay();
+  const diff = d.getDate() - dayOfWeekNum + (dayOfWeekNum === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+};
+
+const getDayOfWeekFromDateString = (dateStr: string): DayOfWeek => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  const days: DayOfWeek[] = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  return days[d.getDay()];
+};
+
 interface ClientManagementProps {
   clients: Client[];
   teamMembers: TeamMember[];
@@ -21,11 +37,13 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<Priority>('medium');
   const [newTaskResponsible, setNewTaskResponsible] = useState<string>('');
-  const [newTaskDay, setNewTaskDay] = useState<string>('');
+  const [newTaskPhase, setNewTaskPhase] = useState<string>('');
+  const [newTaskDate, setNewTaskDate] = useState<string>('');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [subTasks, setSubTasks] = useState<Omit<SubTask, 'id'>[]>([]);
   const [newSubTaskTitle, setNewSubTaskTitle] = useState('');
   const [editSubTaskTitle, setEditSubTaskTitle] = useState('');
+  const [newCommentText, setNewCommentText] = useState('');
   
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [editClientName, setEditClientName] = useState('');
@@ -85,6 +103,8 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
       title: newTaskTitle,
       completed: false,
       priority: newTaskPriority,
+      phase: newTaskPhase || undefined,
+      dueDate: newTaskDate || undefined,
       responsible: newTaskResponsible || undefined,
       subTasks: subTasks.map(st => ({ ...st, id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)) }))
     };
@@ -94,25 +114,26 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
       masterTasks: [newTask, ...client.masterTasks],
     });
 
-    if (newTaskDay && onAddWeeklyTask && currentWeekId) {
+    if (newTaskDate && onAddWeeklyTask) {
       onAddWeeklyTask({
-        weekId: currentWeekId,
-        day: newTaskDay as DayOfWeek,
+        weekId: getWeekIdFromDateString(newTaskDate),
+        day: getDayOfWeekFromDateString(newTaskDate),
         title: newTask.title,
         clientId: client.id,
         masterTaskId: newTask.id,
         completed: false,
         order: 999,
         subTasks: newTask.subTasks,
-        responsible: newTask.responsible
+        responsible: newTask.responsible,
+        phase: newTask.phase,
+        dueDate: newTaskDate,
+        comments: []
       });
-    }
-    
-    // Reset fields
+    }// Reset fields
     setNewTaskTitle('');
     setNewTaskPriority('medium');
     setNewTaskResponsible('');
-    setNewTaskDay('');
+    setNewTaskDate('');
     setSubTasks([]);
   };
 
@@ -140,6 +161,27 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
       ),
     });
     setEditSubTaskTitle('');
+  };
+
+  const handleAddCommentToExisting = (clientId: string, task: MasterTask) => {
+    if (!newCommentText.trim()) return;
+    const client = clients.find(c => c.id === clientId);
+    if (!client) return;
+
+    const newComment = {
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)),
+      authorId: 'Usuário',
+      text: newCommentText,
+      createdAt: Date.now()
+    };
+
+    onUpdateClient({
+      ...client,
+      masterTasks: client.masterTasks.map(t => 
+        t.id === task.id ? { ...t, comments: [...(t.comments || []), newComment] } : t
+      ),
+    });
+    setNewCommentText('');
   };
 
   const removeSubTaskFromExisting = (clientId: string, task: MasterTask, subTaskId: string) => {
@@ -381,21 +423,13 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Planejar para (Opcional)</label>
-                          <select
-                            value={newTaskDay}
-                            onChange={(e) => setNewTaskDay(e.target.value)}
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Data (Opcional)</label>
+                          <input
+                            type="date"
+                            value={newTaskDate}
+                            onChange={(e) => setNewTaskDate(e.target.value)}
                             className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 appearance-none text-slate-300"
-                          >
-                            <option value="">Apenas no Backlog</option>
-                            <option value="Segunda">Segunda</option>
-                            <option value="Terça">Terça</option>
-                            <option value="Quarta">Quarta</option>
-                            <option value="Quinta">Quinta</option>
-                            <option value="Sexta">Sexta</option>
-                            <option value="Sábado">Sábado</option>
-                            <option value="Domingo">Domingo</option>
-                          </select>
+                          />
                         </div>
                       </div>
 
@@ -431,7 +465,7 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                           className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-3 font-bold transition-all shadow-lg shadow-indigo-600/10 active:scale-95 flex items-center justify-center gap-2"
                         >
                           <Plus className="w-4 h-4" />
-                          Adicionar Demanda {newTaskDay ? `ao Backlog e Planejador (${newTaskDay})` : 'ao Backlog'}
+                          Adicionar Demanda {newTaskDate ? `ao Backlog e Planejador (${getDayOfWeekFromDateString(newTaskDate).substring(0, 3)})` : 'ao Backlog'}
                         </button>
                       </div>
                     </div>
@@ -481,6 +515,11 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                         {task.subTasks.length} subtarefas
                                       </span>
                                     )}
+                                    {task.dueDate && (
+                                      <span className="text-[8px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                        📅 {task.dueDate.split('-').reverse().join('/')}
+                                      </span>
+                                    )}
                                   </div>
 
                                   <AnimatePresence>
@@ -525,6 +564,41 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                               className="flex-1 bg-black/20 border border-white/5 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
                                             />
                                             <button onClick={() => addSubTaskToExisting(selectedClient.id, task)} className="p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500/30"><Plus className="w-3 h-3" /></button>
+                                          </div>
+                                        </div>
+
+                                        {/* Comentários */}
+                                        <div className="space-y-2 pt-2 border-t border-white/5 mt-2">
+                                          <label className="text-[9px] font-bold text-slate-500 uppercase flex items-center gap-2">
+                                            Comentários / Histórico
+                                          </label>
+                                          <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                                            {(task.comments || []).map(comment => (
+                                              <div key={comment.id} className="bg-white/5 p-2 rounded-lg space-y-1">
+                                                <div className="flex items-center justify-between">
+                                                  <span className="text-[9px] font-bold text-indigo-400">{comment.authorId}</span>
+                                                  <span className="text-[8px] text-slate-500">{new Date(comment.createdAt).toLocaleString()}</span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap break-words">{comment.text}</p>
+                                              </div>
+                                            ))}
+                                            {(!task.comments || task.comments.length === 0) && (
+                                              <p className="text-[10px] text-slate-500 italic text-center py-2">Nenhum comentário ainda.</p>
+                                            )}
+                                          </div>
+                                          <div className="flex flex-col gap-2 pt-1">
+                                            <textarea 
+                                              placeholder="Adicionar comentário, link ou atualização..."
+                                              value={newCommentText}
+                                              onChange={(e) => setNewCommentText(e.target.value)}
+                                              className="w-full bg-black/20 border border-white/5 rounded-lg px-2 py-2 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/30 min-h-[60px]"
+                                            />
+                                            <button 
+                                              onClick={() => handleAddCommentToExisting(selectedClient.id, task)} 
+                                              className="self-end px-3 py-1.5 bg-indigo-500 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-400 transition-colors"
+                                            >
+                                              Comentar
+                                            </button>
                                           </div>
                                         </div>
                                       </motion.div>
