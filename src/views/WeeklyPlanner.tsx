@@ -83,6 +83,7 @@ clients,
   const [selectedClientId, setSelectedClientId] = useState<string>('standalone');
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [newSubTaskTitles, setNewSubTaskTitles] = useState<Record<string, string>>({});
+  const [newCommentTexts, setNewCommentTexts] = useState<Record<string, string>>({});
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const [year, month, day] = currentWeekId.split('-').map(Number);
@@ -144,6 +145,24 @@ clients,
       completed: false // If adding new subtask, main task might not be completed anymore
     });
     setNewSubTaskTitles({ ...newSubTaskTitles, [task.id]: '' });
+  };
+
+  const handleAddComment = (task: WeeklyTask) => {
+    const text = newCommentTexts[task.id];
+    if (!text?.trim()) return;
+
+    const newComment = {
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)),
+      authorId: 'Equipe',
+      text: text,
+      createdAt: Date.now()
+    };
+
+    onUpdateTask({
+      ...task,
+      comments: [...(task.comments || []), newComment]
+    });
+    setNewCommentTexts({ ...newCommentTexts, [task.id]: '' });
   };
 
   const removeSubTask = (task: WeeklyTask, subTaskId: string) => {
@@ -223,7 +242,7 @@ clients,
       </header>
 
       <div className={`flex-1 pb-8 ${viewMode === 'kanban' ? 'overflow-x-auto -mx-8 px-8' : 'overflow-y-auto pr-4 custom-scrollbar'}`}>
-        <div className={`flex ${viewMode === 'kanban' ? 'gap-6 min-w-max h-full' : 'flex-col gap-8 max-w-5xl mx-auto w-full h-full'}`}>
+        <div className={`flex ${viewMode === 'kanban' ? 'gap-6 min-w-max h-full' : 'flex-col gap-6 max-w-4xl mx-auto w-full h-full'}`}>
           {DAYS.map((day) => {
             const dayTasks = weeklyTasks
               .filter(t => t.day === day)
@@ -263,7 +282,7 @@ clients,
                           value={task}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className={`group p-4 rounded-2xl border transition-all cursor-grab active:cursor-grabbing ${
+                          className={`group p-3 rounded-2xl border transition-all cursor-grab active:cursor-grabbing ${
                             task.completed 
                               ? 'bg-emerald-500/[0.03] border-emerald-500/10' 
                               : client 
@@ -272,7 +291,7 @@ clients,
                           }`}
                           style={!task.completed && client ? { borderLeft: `4px solid ${client.color}` } : {}}
                         >
-                          <div className="flex flex-col gap-3">
+                          <div className="flex flex-col gap-2">
                             <div className="flex items-start gap-3">
                               <button 
                                 onClick={() => toggleTask(task)}
@@ -389,7 +408,7 @@ clients,
                                     <button onClick={() => addSubTask(task)} className="p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500/30"><Plus className="w-3 h-3" /></button>
                                   </div>
 
-                                  <div className="flex items-center gap-2 pt-2">
+                                  <div className="flex items-center gap-2 pt-2 pb-2">
                                     <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Responsável:</span>
                                     <select 
                                       value={task.responsible || ''}
@@ -399,6 +418,41 @@ clients,
                                       <option value="">Ninguém</option>
                                       {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                     </select>
+                                  </div>
+
+                                  {/* Comentários */}
+                                  <div className="space-y-2 pt-2 border-t border-white/5">
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase flex items-center gap-2">
+                                      Comentários / Histórico
+                                    </label>
+                                    <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                                      {(task.comments || []).map(comment => (
+                                        <div key={comment.id} className="bg-white/5 p-2 rounded-lg space-y-1">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-[9px] font-bold text-indigo-400">{comment.authorId}</span>
+                                            <span className="text-[8px] text-slate-500">{new Date(comment.createdAt).toLocaleString()}</span>
+                                          </div>
+                                          <p className="text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap break-words">{comment.text}</p>
+                                        </div>
+                                      ))}
+                                      {(!task.comments || task.comments.length === 0) && (
+                                        <p className="text-[10px] text-slate-500 italic text-center py-2">Nenhum comentário ainda.</p>
+                                      )}
+                                    </div>
+                                    <div className="flex flex-col gap-2 pt-1">
+                                      <textarea 
+                                        placeholder="Adicionar comentário ou atualização..."
+                                        value={newCommentTexts[task.id] || ''}
+                                        onChange={(e) => setNewCommentTexts({ ...newCommentTexts, [task.id]: e.target.value })}
+                                        className="w-full bg-black/20 border border-white/5 rounded-lg px-2 py-2 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/30 min-h-[60px]"
+                                      />
+                                      <button 
+                                        onClick={() => handleAddComment(task)} 
+                                        className="self-end px-3 py-1.5 bg-indigo-500 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-400 transition-colors"
+                                      >
+                                        Comentar
+                                      </button>
+                                    </div>
                                   </div>
                                 </motion.div>
                               )}
