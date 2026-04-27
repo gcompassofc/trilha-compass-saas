@@ -235,7 +235,7 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       <header className="flex flex-col gap-2">
-        <h1 className="text-4xl font-bold prisma-text">Gestão de Clientes</h1>
+        <h1 className="text-2xl md:text-4xl font-bold prisma-text">Gestão de Clientes</h1>
         <p className="text-slate-400 font-light">Organize o backlog de demandas por projeto e as prioridades de cada cliente.</p>
       </header>
 

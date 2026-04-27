@@ -209,9 +209,9 @@ clients,
 
   return (
     <div className="space-y-8 h-full flex flex-col">
-      <header className="flex justify-between items-end">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div className="gap-2 flex flex-col">
-          <h1 className="text-4xl font-bold prisma-text tracking-tight">Sprint Semanal</h1>
+          <h1 className="text-2xl md:text-4xl font-bold prisma-text tracking-tight">Sprint Semanal</h1>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-1">
               <button onClick={() => navigateWeek('prev')} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors">

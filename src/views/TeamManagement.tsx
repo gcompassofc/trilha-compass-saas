@@ -60,7 +60,7 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       <header className="flex flex-col gap-2">
-        <h1 className="text-4xl font-bold prisma-text">Equipe</h1>
+        <h1 className="text-2xl md:text-4xl font-bold prisma-text">Equipe</h1>
         <p className="text-slate-400 font-light">Gerencie os responsáveis pelas demandas do projeto.</p>
       </header>
 

@@ -205,7 +205,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen plasma-bg overflow-hidden">
+    <div className="flex flex-col md:flex-row min-h-screen plasma-bg overflow-hidden">
       <div className="fixed top-[-10%] left-[-5%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="fixed bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full pointer-events-none" />
 
@@ -219,7 +219,7 @@ export default function App() {
         teamMembers={teamMembers} 
       />
 
-      <main className="flex-1 p-8 overflow-hidden flex flex-col h-screen relative z-10 transition-all duration-500">
+      <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-hidden flex flex-col h-[100dvh] md:h-screen relative z-10 transition-all duration-500">
         <div className="flex justify-between items-center mb-4">
           <button 
             onClick={() => setIsSearchOpen(true)}
