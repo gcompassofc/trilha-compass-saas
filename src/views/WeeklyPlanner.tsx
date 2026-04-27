@@ -17,6 +17,21 @@ interface WeeklyPlannerProps {
 
 const DAYS: DayOfWeek[] = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
+const getDateForDayOfWeek = (weekId: string, targetDay: DayOfWeek): string => {
+  const days: DayOfWeek[] = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  const [year, month, day] = weekId.split('-').map(Number);
+  const monday = new Date(year, month - 1, day);
+  
+  const targetIndex = days.indexOf(targetDay);
+  let offset = targetIndex - 1; 
+  if (targetIndex === 0) offset = 6; 
+  
+  const targetDate = new Date(monday);
+  targetDate.setDate(monday.getDate() + offset);
+  
+  return `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+};
+
 
 const formatTime = (totalSeconds: number) => {
   const h = Math.floor(totalSeconds / 3600);
@@ -94,9 +109,11 @@ clients,
   };
 
   const handleAddTask = (day: DayOfWeek, masterTask?: MasterTask) => {
+    const targetDate = getDateForDayOfWeek(currentWeekId, day);
     const task: Omit<WeeklyTask, 'id'> = {
       weekId: currentWeekId,
       day,
+      dueDate: masterTask?.dueDate || targetDate, // Usa a data do masterTask, ou a data preenchida
       title: masterTask ? masterTask.title : newTaskTitle,
       clientId: selectedClientId === 'standalone' ? undefined : selectedClientId,
       masterTaskId: masterTask?.id,
@@ -177,9 +194,11 @@ clients,
   };
 
   const moveTaskToDay = (task: WeeklyTask, newDay: DayOfWeek) => {
+    const newDate = getDateForDayOfWeek(currentWeekId, newDay);
     onUpdateTask({ 
       ...task, 
       day: newDay,
+      dueDate: newDate,
       order: weeklyTasks.filter(t => t.day === newDay).length 
     });
   };
