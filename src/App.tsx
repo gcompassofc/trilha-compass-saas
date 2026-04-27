@@ -114,6 +114,26 @@ export default function App() {
     // 2. Sync changes down to WeeklyTasks (Two-way sync)
     const oldClient = clients.find(c => c.id === updated.id);
     if (oldClient) {
+      // 2.1 Sync deletions (tasks removed from Client Backlog)
+      const removedTasks = oldClient.masterTasks.filter(oldMt => 
+         !updated.masterTasks.some(newMt => newMt.id === oldMt.id)
+      );
+      
+      removedTasks.forEach(async (deletedMt) => {
+         const q = query(collection(db, 'weeklyTasks'), where('masterTaskId', '==', deletedMt.id));
+         let snapshot = await getDocs(q);
+         
+         if (snapshot.empty) {
+           const qFallback = query(collection(db, 'weeklyTasks'), where('clientId', '==', updated.id), where('title', '==', deletedMt.title));
+           snapshot = await getDocs(qFallback);
+         }
+         
+         snapshot.forEach(docSnap => {
+            dbService.deleteTask(docSnap.id);
+         });
+      });
+
+      // 2.2 Sync updates
       updated.masterTasks.forEach(async (newMt) => {
         const oldMt = oldClient.masterTasks.find(t => t.id === newMt.id);
         // If it exists and has changes
@@ -207,6 +227,21 @@ export default function App() {
   };
 
   const handleDeleteTask = async (id: string) => {
+    // 1. Delete from Client Backlog if linked (Two-way sync)
+    const taskToDelete = weeklyTasks.find(t => t.id === id);
+    if (taskToDelete && taskToDelete.clientId) {
+      const client = clients.find(c => c.id === taskToDelete.clientId);
+      if (client) {
+         const updatedMasterTasks = client.masterTasks.filter(mt => 
+            taskToDelete.masterTaskId ? mt.id !== taskToDelete.masterTaskId : mt.title !== taskToDelete.title
+         );
+         if (updatedMasterTasks.length !== client.masterTasks.length) {
+            await dbService.updateClient({ ...client, masterTasks: updatedMasterTasks });
+         }
+      }
+    }
+    
+    // 2. Delete the task
     await dbService.deleteTask(id);
   };
   
