@@ -124,13 +124,19 @@ export default function App() {
          let snapshot = await getDocs(q);
          
          if (snapshot.empty) {
-           const qFallback = query(collection(db, 'weeklyTasks'), where('clientId', '==', updated.id), where('title', '==', deletedMt.title));
-           snapshot = await getDocs(qFallback);
+           const qFallback = query(collection(db, 'weeklyTasks'), where('clientId', '==', updated.id));
+           const snapshotFallback = await getDocs(qFallback);
+           
+           snapshotFallback.docs
+             .filter(docSnap => docSnap.data().title === deletedMt.title)
+             .forEach(docSnap => {
+               dbService.deleteTask(docSnap.id);
+             });
+         } else {
+           snapshot.forEach(docSnap => {
+              dbService.deleteTask(docSnap.id);
+           });
          }
-         
-         snapshot.forEach(docSnap => {
-            dbService.deleteTask(docSnap.id);
-         });
       });
 
       // 2.2 Sync updates
@@ -143,36 +149,59 @@ export default function App() {
           
           // Fallback para tarefas antigas (legadas) sem masterTaskId
           if (snapshot.empty) {
-            const qFallback = query(collection(db, 'weeklyTasks'), where('clientId', '==', updated.id), where('title', '==', oldMt.title));
-            snapshot = await getDocs(qFallback);
+            const qFallback = query(collection(db, 'weeklyTasks'), where('clientId', '==', updated.id));
+            const snapshotFallback = await getDocs(qFallback);
+            
+            snapshotFallback.docs
+              .filter(docSnap => docSnap.data().title === oldMt.title)
+              .forEach(docSnap => {
+                const wt = docSnap.data() as WeeklyTask;
+                let wtUpdated = {
+                   ...wt,
+                   title: newMt.title,
+                   completed: newMt.completed,
+                   subTasks: newMt.subTasks,
+                   responsible: newMt.responsible,
+                   comments: newMt.comments,
+                   dueDate: newMt.dueDate
+                };
+                
+                if (newMt.dueDate && oldMt.dueDate !== newMt.dueDate) {
+                   wtUpdated.weekId = getWeekIdFromDateString(newMt.dueDate);
+                   wtUpdated.day = getDayOfWeekFromDateString(newMt.dueDate);
+                }
+                
+                if (!wtUpdated.masterTaskId) {
+                   wtUpdated.masterTaskId = newMt.id;
+                }
+                
+                updateDoc(docSnap.ref, JSON.parse(JSON.stringify(wtUpdated)));
+              });
+          } else {
+            snapshot.forEach(docSnap => {
+              const wt = docSnap.data() as WeeklyTask;
+              let wtUpdated = {
+                 ...wt,
+                 title: newMt.title,
+                 completed: newMt.completed,
+                 subTasks: newMt.subTasks,
+                 responsible: newMt.responsible,
+                 comments: newMt.comments,
+                 dueDate: newMt.dueDate
+              };
+              
+              if (newMt.dueDate && oldMt.dueDate !== newMt.dueDate) {
+                 wtUpdated.weekId = getWeekIdFromDateString(newMt.dueDate);
+                 wtUpdated.day = getDayOfWeekFromDateString(newMt.dueDate);
+              }
+              
+              if (!wtUpdated.masterTaskId) {
+                 wtUpdated.masterTaskId = newMt.id;
+              }
+              
+              updateDoc(docSnap.ref, JSON.parse(JSON.stringify(wtUpdated)));
+            });
           }
-          
-          snapshot.forEach(docSnap => {
-            const wt = docSnap.data() as WeeklyTask;
-            let wtUpdated = {
-               ...wt,
-               title: newMt.title,
-               completed: newMt.completed,
-               subTasks: newMt.subTasks,
-               responsible: newMt.responsible,
-               comments: newMt.comments,
-               dueDate: newMt.dueDate
-            };
-            
-            // If the date changed, we need to recalculate the weekId and day
-            if (newMt.dueDate && oldMt.dueDate !== newMt.dueDate) {
-               wtUpdated.weekId = getWeekIdFromDateString(newMt.dueDate);
-               wtUpdated.day = getDayOfWeekFromDateString(newMt.dueDate);
-            }
-            
-            // Corrige o masterTaskId caso estivesse faltando (legado)
-            if (!wtUpdated.masterTaskId) {
-               wtUpdated.masterTaskId = newMt.id;
-            }
-            
-            // Note: using direct updateDoc to avoid cyclic loops with dbService.updateTask calling handleUpdateTask
-            updateDoc(docSnap.ref, JSON.parse(JSON.stringify(wtUpdated)));
-          });
         }
       });
     }
