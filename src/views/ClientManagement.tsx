@@ -491,7 +491,22 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                   <Circle className="w-5 h-5 text-slate-600 hover:text-indigo-400 transition-colors" />
                                 </button>
                                 <div className="flex flex-col flex-1">
-                                  <span className="text-slate-200 font-bold cursor-pointer hover:text-white transition-colors" onClick={() => setEditingTaskId(isEditing ? null : task.id)}>{task.title}</span>
+                                  {isEditing ? (
+                                    <input 
+                                      type="text" 
+                                      value={task.title}
+                                      onChange={(e) => {
+                                        const updated = { ...task, title: e.target.value };
+                                        onUpdateClient({
+                                          ...selectedClient,
+                                          masterTasks: selectedClient.masterTasks.map(t => t.id === task.id ? updated : t)
+                                        });
+                                      }}
+                                      className="bg-transparent text-slate-200 font-bold border-b border-indigo-500/50 focus:outline-none focus:border-indigo-400 w-full mb-1"
+                                    />
+                                  ) : (
+                                    <span className="text-slate-200 font-bold cursor-pointer hover:text-white transition-colors" onClick={() => setEditingTaskId(isEditing ? null : task.id)}>{task.title}</span>
+                                  )}
                                   <div className="flex flex-wrap items-center gap-2 mt-1.5">
                                     <span className={`text-[8px] uppercase font-black tracking-tighter px-2 py-0.5 rounded border ${
                                       task.priority === 'high' ? 'bg-rose-500/20 text-rose-500 border-rose-500/20' : 

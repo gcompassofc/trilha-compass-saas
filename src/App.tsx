@@ -219,7 +219,7 @@ export default function App() {
         teamMembers={teamMembers} 
       />
 
-      <main className="flex-1 p-8 overflow-y-auto h-screen relative z-10 transition-all duration-500">
+      <main className="flex-1 p-8 overflow-hidden flex flex-col h-screen relative z-10 transition-all duration-500">
         <div className="flex justify-between items-center mb-4">
           <button 
             onClick={() => setIsSearchOpen(true)}
@@ -245,7 +245,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
-              className="h-full"
+              className="flex-1 min-h-0 w-full overflow-hidden flex flex-col"
             >
               <WeeklyPlanner 
                 clients={clients}
@@ -267,6 +267,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
+              className="flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar pr-2 pb-8"
             >
               <ClientManagement 
                 clients={clients}
@@ -286,6 +287,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
+              className="flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar pr-2 pb-8"
             >
               <TeamManagement 
                 teamMembers={teamMembers}

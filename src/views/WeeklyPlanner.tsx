@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid, ListTodo, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember } from '../types';
@@ -99,6 +99,14 @@ clients,
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [newSubTaskTitles, setNewSubTaskTitles] = useState<Record<string, string>>({});
   const [newCommentTexts, setNewCommentTexts] = useState<Record<string, string>>({});
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollColumns = (dir: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 304; // 280px + 24px gap
+      scrollContainerRef.current.scrollBy({ left: dir === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const [year, month, day] = currentWeekId.split('-').map(Number);
@@ -260,8 +268,19 @@ clients,
         </div>
       </header>
 
-      <div className={`flex-1 pb-8 ${viewMode === 'kanban' ? 'overflow-x-auto overflow-y-hidden -mx-8 px-8 min-h-0' : 'overflow-y-auto pr-4 custom-scrollbar'}`}>
-        <div className={`flex ${viewMode === 'kanban' ? 'gap-6 min-w-max h-full items-start' : 'flex-col gap-6 max-w-4xl mx-auto w-full h-full'}`}>
+      <div className="relative flex-1 min-h-0 flex flex-col group/kanban pb-8">
+        {viewMode === 'kanban' && (
+           <>
+             <button onClick={() => scrollColumns('left')} className="absolute left-[-16px] top-1/2 -translate-y-1/2 z-20 p-2 bg-slate-900/80 text-indigo-400 hover:bg-slate-800 rounded-full opacity-0 group-hover/kanban:opacity-100 transition-opacity backdrop-blur-sm border border-indigo-500/20 shadow-xl shadow-black/50">
+               <ChevronLeft className="w-6 h-6" />
+             </button>
+             <button onClick={() => scrollColumns('right')} className="absolute right-[-16px] top-1/2 -translate-y-1/2 z-20 p-2 bg-slate-900/80 text-indigo-400 hover:bg-slate-800 rounded-full opacity-0 group-hover/kanban:opacity-100 transition-opacity backdrop-blur-sm border border-indigo-500/20 shadow-xl shadow-black/50">
+               <ChevronRight className="w-6 h-6" />
+             </button>
+           </>
+        )}
+        <div ref={scrollContainerRef} className={`flex-1 ${viewMode === 'kanban' ? 'overflow-x-auto overflow-y-hidden -mx-8 px-8 min-h-0 custom-scrollbar scroll-smooth' : 'overflow-y-auto pr-4 custom-scrollbar'}`}>
+          <div className={`flex ${viewMode === 'kanban' ? 'gap-6 min-w-max h-full items-start pb-4' : 'flex-col gap-6 max-w-4xl mx-auto w-full h-full'}`}>
           {DAYS.map((day) => {
             const dayTasks = weeklyTasks
               .filter(t => t.day === day)
@@ -341,9 +360,19 @@ clients,
                                       </span>
                                     )}
                                   </div>
-                                  <p className={`text-[13px] leading-relaxed break-words font-medium cursor-pointer ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
-                                    {task.title}
-                                  </p>
+                                  {isExpanded ? (
+                                    <input
+                                      type="text"
+                                      value={task.title}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onChange={(e) => onUpdateTask({ ...task, title: e.target.value })}
+                                      className="w-full bg-transparent text-[13px] leading-relaxed font-medium text-slate-200 border-b border-indigo-500/50 focus:outline-none focus:border-indigo-400 mb-1"
+                                    />
+                                  ) : (
+                                    <p className={`text-[13px] leading-relaxed break-words font-medium cursor-pointer ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                                      {task.title}
+                                    </p>
+                                  )}
                                   
                                   <div className="mt-3 flex flex-wrap items-center gap-2">
                                     {task.responsible && (() => {
@@ -393,9 +422,19 @@ clients,
                                 </button>
 
                                 <div className="flex-1 min-w-0 flex items-center gap-2 cursor-pointer" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
-                                  <span className={`text-[13px] font-bold truncate ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
-                                    {task.title}
-                                  </span>
+                                  {isExpanded ? (
+                                    <input
+                                      type="text"
+                                      value={task.title}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onChange={(e) => onUpdateTask({ ...task, title: e.target.value })}
+                                      className="bg-transparent text-[13px] font-bold text-slate-200 border-b border-indigo-500/50 focus:outline-none focus:border-indigo-400 truncate w-full max-w-[200px]"
+                                    />
+                                  ) : (
+                                    <span className={`text-[13px] font-bold truncate ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                                      {task.title}
+                                    </span>
+                                  )}
                                   {client ? (
                                     <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/5 whitespace-nowrap" style={{ color: client.color }}>
                                       {client.name}
