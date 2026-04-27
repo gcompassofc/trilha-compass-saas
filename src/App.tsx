@@ -119,7 +119,13 @@ export default function App() {
         // If it exists and has changes
         if (oldMt && JSON.stringify(oldMt) !== JSON.stringify(newMt)) {
           const q = query(collection(db, 'weeklyTasks'), where('masterTaskId', '==', newMt.id));
-          const snapshot = await getDocs(q);
+          let snapshot = await getDocs(q);
+          
+          // Fallback para tarefas antigas (legadas) sem masterTaskId
+          if (snapshot.empty) {
+            const qFallback = query(collection(db, 'weeklyTasks'), where('clientId', '==', updated.id), where('title', '==', oldMt.title));
+            snapshot = await getDocs(qFallback);
+          }
           
           snapshot.forEach(docSnap => {
             const wt = docSnap.data() as WeeklyTask;
@@ -137,6 +143,11 @@ export default function App() {
             if (newMt.dueDate && oldMt.dueDate !== newMt.dueDate) {
                wtUpdated.weekId = getWeekIdFromDateString(newMt.dueDate);
                wtUpdated.day = getDayOfWeekFromDateString(newMt.dueDate);
+            }
+            
+            // Corrige o masterTaskId caso estivesse faltando (legado)
+            if (!wtUpdated.masterTaskId) {
+               wtUpdated.masterTaskId = newMt.id;
             }
             
             // Note: using direct updateDoc to avoid cyclic loops with dbService.updateTask calling handleUpdateTask
@@ -163,11 +174,18 @@ export default function App() {
     }
 
     // 2. Sync full status with Client Backlog if linked (Two-way sync)
-    if (updated.clientId && updated.masterTaskId) {
+    if (updated.clientId) {
       const client = clients.find(c => c.id === updated.clientId);
       if (client) {
-        const updatedMasterTasks = client.masterTasks.map(mt => 
-          mt.id === updated.masterTaskId ? { 
+        const mtIndex = client.masterTasks.findIndex(mt => 
+          updated.masterTaskId ? mt.id === updated.masterTaskId : mt.title === updated.title
+        );
+
+        if (mtIndex !== -1) {
+          const updatedMasterTasks = [...client.masterTasks];
+          const mt = updatedMasterTasks[mtIndex];
+          
+          updatedMasterTasks[mtIndex] = { 
             ...mt, 
             title: updated.title,
             completed: updated.completed,
@@ -175,9 +193,14 @@ export default function App() {
             responsible: updated.responsible,
             comments: updated.comments,
             dueDate: updated.dueDate
-          } : mt
-        );
-        await dbService.updateClient({ ...client, masterTasks: updatedMasterTasks });
+          };
+
+          if (!updated.masterTaskId) {
+             updated.masterTaskId = mt.id;
+          }
+
+          await dbService.updateClient({ ...client, masterTasks: updatedMasterTasks });
+        }
       }
     }
     await dbService.updateTask(updated);
