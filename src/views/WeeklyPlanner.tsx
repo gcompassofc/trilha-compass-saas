@@ -657,6 +657,7 @@ clients,
               </div>
             );
           })}
+          </div>
         </div>
       </div>
     </div>
