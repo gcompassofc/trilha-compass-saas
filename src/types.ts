@@ -50,6 +50,7 @@ export interface WeeklyTask {
   phase?: string;
   dueDate?: string;
   comments?: TaskComment[];
+  priority?: Priority;
   timeSpent?: number; // Total elapsed time in milliseconds
   timerStartedAt?: number | null; // Timestamp when timer started, null if stopped
 }

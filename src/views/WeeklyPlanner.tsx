@@ -120,7 +120,8 @@ clients,
       completed: masterTask ? masterTask.completed : false,
       order: weeklyTasks.filter(t => t.day === day).length,
       subTasks: masterTask?.subTasks || [],
-      responsible: masterTask?.responsible
+      responsible: masterTask?.responsible,
+      priority: masterTask?.priority || 'medium'
     };
 
     onAddTask(task);
@@ -304,85 +305,98 @@ clients,
                           animate={{ opacity: 1, y: 0 }}
                           className={`group transition-all cursor-grab active:cursor-grabbing ${
                             viewMode === 'kanban' 
-                              ? `p-3 rounded-2xl border ${
+                              ? `p-2.5 rounded-xl border ${
                                   task.completed 
                                     ? 'bg-emerald-500/[0.03] border-emerald-500/10' 
                                     : client 
-                                      ? 'bg-white/[0.03] border-white/5 hover:border-white/10 hover:bg-white/[0.05] shadow-lg shadow-black/20'
-                                      : 'bg-amber-500/[0.02] border-amber-500/10 hover:border-amber-500/30 hover:bg-amber-500/[0.04] shadow-lg shadow-amber-500/5'
+                                      ? 'bg-white/[0.03] border-white/5 hover:border-white/10 hover:bg-white/[0.05] shadow-sm shadow-black/10'
+                                      : 'bg-amber-500/[0.02] border-amber-500/10 hover:border-amber-500/30 hover:bg-amber-500/[0.04] shadow-sm shadow-amber-500/5'
                                 }`
                               : `py-1.5 px-1 border-b border-white/5 hover:bg-white/[0.02] ${isExpanded ? 'bg-white/5 rounded-xl px-3 border-transparent my-1' : ''}`
                           }`}
-                          style={viewMode === 'kanban' && !task.completed && client ? { borderLeft: `4px solid ${client.color}` } : {}}
+                          style={viewMode === 'kanban' && !task.completed && client ? { borderLeft: `3px solid ${client.color}` } : {}}
                         >
-                          <div className={`flex ${viewMode === 'kanban' ? 'flex-col gap-2' : 'flex-col'}`}>
+                          <div className={`flex ${viewMode === 'kanban' ? 'flex-col' : 'flex-col'}`}>
                             {viewMode === 'kanban' ? (
-                              <div className="flex items-start gap-3">
-                                <button 
-                                  onClick={() => toggleTask(task)}
-                                  className="mt-0.5 flex-shrink-0"
-                                >
-                                  {task.completed ? (
-                                    <CheckCircle2 className="w-5 h-5 text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                              <div className="flex flex-col gap-1.5 relative">
+                                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
+                                  {client ? (
+                                    <span className="text-[8px] uppercase tracking-wider font-bold truncate max-w-[80px]" style={{ color: client.color }}>
+                                      {client.name}
+                                    </span>
                                   ) : (
-                                    <Circle className={`w-5 h-5 transition-colors ${client ? 'text-slate-700' : 'text-amber-500/40'} group-hover:text-slate-400`} />
+                                    <span className="text-[8px] uppercase tracking-wider font-bold text-amber-500">
+                                      PONTUAL
+                                    </span>
                                   )}
-                                </button>
-                                
-                                <div className="flex-1 min-w-0" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    {!client && !task.completed && (
-                                      <span className="text-[8px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/20">
-                                        PONTUAL
-                                      </span>
-                                    )}
-                                    {client && !task.completed && (
-                                      <span className="text-[8px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded bg-white/5" style={{ color: client.color, border: `1px solid ${client.color}30` }}>
-                                        {client.name}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {isExpanded ? (
-                                    <input
-                                      type="text"
-                                      value={task.title}
-                                      onClick={(e) => e.stopPropagation()}
-                                      onChange={(e) => onUpdateTask({ ...task, title: e.target.value })}
-                                      className="w-full bg-transparent text-[13px] leading-relaxed font-medium text-slate-200 border-b border-indigo-500/50 focus:outline-none focus:border-indigo-400 mb-1"
-                                    />
-                                  ) : (
-                                    <p className={`text-[13px] leading-relaxed break-words font-medium cursor-pointer ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
-                                      {task.title}
-                                    </p>
-                                  )}
-                                  
-                                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                                    {task.responsible && (() => {
-                                      const member = teamMembers.find(m => m.id === task.responsible || m.name === task.responsible);
-                                      return (
-                                        <span className="text-[9px] text-slate-400 flex items-center gap-1.5 bg-white/5 pl-1 pr-2 py-0.5 rounded-full max-w-[120px]">
-                                          {member?.photoUrl ? (
-                                            <img src={member.photoUrl} alt={member?.name} className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
-                                          ) : (
-                                            <User2 className="w-3 h-3 ml-1 shrink-0" />
-                                          )}
-                                          <span className="truncate">{member ? member.name : task.responsible}</span>
+
+                                  {task.responsible && (() => {
+                                    const member = teamMembers.find(m => m.id === task.responsible || m.name === task.responsible);
+                                    return (
+                                      <>
+                                        <span className="text-white/20 text-[8px]">•</span>
+                                        <span className="text-[8px] text-slate-400 truncate max-w-[60px]">
+                                          {member ? member.name.split(' ')[0] : task.responsible}
                                         </span>
-                                      );
-                                    })()}
-                                    {subTasksTotal > 0 && (
-                                      <span className="text-[9px] text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded">
-                                        {subTasksDone}/{subTasksTotal}
+                                      </>
+                                    );
+                                  })()}
+
+                                  {task.priority && (
+                                    <>
+                                      <span className="text-white/20 text-[8px]">•</span>
+                                      <span className={`text-[8px] font-bold ${
+                                        task.priority === 'high' ? 'text-rose-400' :
+                                        task.priority === 'medium' ? 'text-amber-400' : 'text-emerald-400'
+                                      }`}>
+                                        {task.priority === 'high' ? 'Urgente' : task.priority === 'medium' ? 'Normal' : 'Baixa'}
                                       </span>
+                                    </>
+                                  )}
+                                </div>
+
+                                <div className="flex items-start gap-1.5">
+                                  <button onClick={() => toggleTask(task)} className="mt-0.5 flex-shrink-0">
+                                    {task.completed ? (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                    ) : (
+                                      <Circle className={`w-3.5 h-3.5 transition-colors ${client ? 'text-slate-600' : 'text-amber-500/40'} group-hover:text-slate-400`} />
                                     )}
-                                    <TaskTimer task={task} onUpdateTask={onUpdateTask} />
+                                  </button>
+                                  
+                                  <div className="flex-1 min-w-0" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
+                                    {isExpanded ? (
+                                      <input
+                                        type="text"
+                                        value={task.title}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => onUpdateTask({ ...task, title: e.target.value })}
+                                        className="w-full bg-transparent text-[11px] leading-snug font-medium text-slate-200 border-b border-indigo-500/50 focus:outline-none focus:border-indigo-400"
+                                      />
+                                    ) : (
+                                      <p className={`text-[11px] leading-snug break-words font-medium cursor-pointer ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                                        {task.title}
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
 
-                                <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                  <button onClick={() => onDeleteTask(task.id)} className="p-1 text-slate-600 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                                {subTasksTotal > 0 && !isExpanded && (
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <div className="flex-1 h-[3px] bg-white/5 rounded-full overflow-hidden">
+                                      <motion.div 
+                                        className="h-full bg-indigo-500"
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${progress}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="absolute top-0 right-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/80 rounded-bl-lg px-1 pb-1">
+                                  <button onClick={() => onDeleteTask(task.id)} className="p-1 text-slate-500 hover:text-rose-500"><Trash2 className="w-3 h-3" /></button>
                                   <div className="relative group/move">
-                                    <button className="p-1 text-slate-600 hover:text-indigo-400"><Calendar className="w-3.5 h-3.5" /></button>
+                                    <button className="p-1 text-slate-500 hover:text-indigo-400"><Calendar className="w-3 h-3" /></button>
                                     <div className="absolute right-0 top-0 hidden group-hover/move:flex flex-col bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-50 py-1 min-w-[120px]">
                                       {DAYS.filter(d => d !== day).map(d => (
                                         <button key={d} onClick={() => moveTaskToDay(task, d)} className="px-3 py-1.5 text-[10px] text-left text-slate-400 hover:bg-white/5 hover:text-white">{d}</button>
@@ -452,9 +466,18 @@ clients,
                               </div>
                             )}
 
-                            {/* Progress Bar for Subtasks */}
-                            {subTasksTotal > 0 && (viewMode === 'kanban' || isExpanded) && (
+                            {/* Progress Bar for Subtasks in List Mode or Expanded */}
+                            {subTasksTotal > 0 && (viewMode === 'list' || isExpanded) && viewMode !== 'kanban' && (
                               <div className={`w-full h-1 bg-white/5 rounded-full overflow-hidden ${viewMode === 'list' ? 'mt-2' : ''}`}>
+                                <motion.div 
+                                  className="h-full bg-indigo-500"
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            )}
+                            {subTasksTotal > 0 && viewMode === 'kanban' && isExpanded && (
+                               <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-2">
                                 <motion.div 
                                   className="h-full bg-indigo-500"
                                   initial={{ width: 0 }}
