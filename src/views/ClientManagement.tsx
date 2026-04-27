@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, Building2, ChevronRight, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save } from 'lucide-react';
+import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Client, MasterTask, Priority, SubTask, TeamMember, WeeklyTask, DayOfWeek } from '../types';
 import GlassCard from '../components/GlassCard';
@@ -239,9 +239,8 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
         <p className="text-slate-400 font-light">Organize o backlog de demandas por projeto e as prioridades de cada cliente.</p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Client List */}
-        <div className="lg:col-span-1 space-y-4">
+      {!selectedClientId ? (
+        <div className="space-y-6">
                     <div className="glass-panel p-4 border-white/10">
             <div className="flex flex-col gap-2">
               <input
@@ -304,11 +303,10 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
 
               </motion.button>
             ))}
+            </div>
           </div>
-        </div>
-
-        {/* Client Details & Backlog */}
-        <div className="lg:col-span-2">
+      ) : (
+        <div className="w-full">
           <AnimatePresence mode="wait">
             {selectedClient ? (
               <motion.div
@@ -318,6 +316,14 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6"
               >
+                <button 
+                  onClick={() => setSelectedClientId(null)}
+                  className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors group bg-white/5 px-4 py-2 rounded-xl w-fit border border-white/10 hover:bg-white/10"
+                >
+                  <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                  <span className="font-medium text-sm">Voltar para clientes</span>
+                </button>
+
                 <GlassCard className="p-8">
                                     <div className="flex justify-between items-start mb-8">
                     <div className="flex items-center gap-6 w-full">
@@ -693,15 +699,10 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                   </div>
                 </GlassCard>
               </motion.div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-600 py-32 px-8 border-2 border-dashed border-white/5 rounded-[3rem]">
-                <Users className="w-16 h-16 mb-4 opacity-5" />
-                <p className="text-lg font-light opacity-30">Selecione um cliente para gerenciar o backlog</p>
-              </div>
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
-      </div>
+      )}
     </div>
   );
 }
