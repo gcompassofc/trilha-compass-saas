@@ -375,7 +375,7 @@ clients,
               .filter(t => t.day === day)
               .sort((a, b) => a.order - b.order);
 
-            const isToday = new Date().toLocaleDateString('pt-BR', { weekday: 'long' }).toLowerCase().includes(day.toLowerCase().slice(0, 3));
+            const isToday = getDateForDayOfWeek(currentWeekId, day) === new Date().toISOString().split('T')[0];
 
             return (
               <div key={day} className={`${viewMode === 'kanban' ? 'w-[280px] shrink-0 max-h-full' : 'w-full'} flex flex-col gap-4 relative ${isToday ? 'z-10' : ''}`}>
