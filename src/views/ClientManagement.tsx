@@ -38,7 +38,8 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<Priority>('medium');
-  const [newTaskResponsible, setNewTaskResponsible] = useState<string>('');
+  const [newTaskResponsibles, setNewTaskResponsibles] = useState<string[]>([]);
+  const [newTaskType, setNewTaskType] = useState<TaskType>('scope');
   const [newTaskPhase, setNewTaskPhase] = useState<string>('');
   const [newTaskDate, setNewTaskDate] = useState<string>('');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -107,7 +108,9 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
       priority: newTaskPriority,
       phase: newTaskPhase || undefined,
       dueDate: newTaskDate || undefined,
-      responsible: newTaskResponsible || undefined,
+      responsible: newTaskResponsibles[0] || undefined,
+      responsibles: newTaskResponsibles,
+      taskType: newTaskType,
       subTasks: subTasks.map(st => ({ ...st, id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)) }))
     };
 
@@ -127,6 +130,8 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
         order: 999,
         subTasks: newTask.subTasks,
         responsible: newTask.responsible,
+        responsibles: newTask.responsibles,
+        taskType: newTask.taskType,
         phase: newTask.phase,
         dueDate: newTaskDate,
         comments: []
@@ -134,7 +139,8 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
     }// Reset fields
     setNewTaskTitle('');
     setNewTaskPriority('medium');
-    setNewTaskResponsible('');
+    setNewTaskResponsibles([]);
+    setNewTaskType('scope');
     setNewTaskDate('');
     setSubTasks([]);
   };
@@ -194,6 +200,27 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
       ...client,
       masterTasks: client.masterTasks.map(t => 
         t.id === task.id ? { ...t, subTasks: (t.subTasks || []).filter(st => st.id !== subTaskId) } : t
+      ),
+    });
+  };
+
+  const reorderSubTaskForExisting = (clientId: string, task: MasterTask, index: number, direction: 'up' | 'down') => {
+    const client = clients.find(c => c.id === clientId);
+    if (!client || !task.subTasks) return;
+
+    const newSubTasks = [...task.subTasks];
+    if (direction === 'up' && index > 0) {
+      [newSubTasks[index - 1], newSubTasks[index]] = [newSubTasks[index], newSubTasks[index - 1]];
+    } else if (direction === 'down' && index < newSubTasks.length - 1) {
+      [newSubTasks[index + 1], newSubTasks[index]] = [newSubTasks[index], newSubTasks[index + 1]];
+    } else {
+      return;
+    }
+
+    onUpdateClient({
+      ...client,
+      masterTasks: client.masterTasks.map(t => 
+        t.id === task.id ? { ...t, subTasks: newSubTasks } : t
       ),
     });
   };
@@ -491,15 +518,48 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Responsável</label>
-                          <select
-                            value={newTaskResponsible}
-                            onChange={(e) => setNewTaskResponsible(e.target.value)}
-                            className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 appearance-none text-slate-300"
-                          >
-                            <option value="">Ninguém</option>
-                            {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                          </select>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase flex justify-between">
+                            Responsáveis
+                          </label>
+                          <div className="flex flex-wrap gap-1.5 p-1 bg-white/5 border border-white/5 rounded-xl min-h-[44px] items-center custom-scrollbar overflow-x-auto">
+                            {teamMembers.map(m => {
+                              const isSelected = newTaskResponsibles.includes(m.id);
+                              return (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setNewTaskResponsibles(prev => 
+                                      isSelected ? prev.filter(id => id !== m.id) : [...prev, m.id]
+                                    );
+                                  }}
+                                  className={`px-2 py-1 rounded-lg text-[10px] uppercase font-bold transition-all whitespace-nowrap ${isSelected ? 'bg-indigo-500 text-white shadow-md' : 'bg-transparent text-slate-400 hover:bg-white/10'}`}
+                                >
+                                  {m.name.split(' ')[0]}
+                                </button>
+                              );
+                            })}
+                            {teamMembers.length === 0 && <span className="text-[10px] text-slate-500 italic px-2">Nenhum membro</span>}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Tipo</label>
+                          <div className="flex bg-white/5 border border-white/5 rounded-xl p-1 h-[44px]">
+                            <button
+                              type="button"
+                              onClick={() => setNewTaskType('scope')}
+                              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg text-[10px] uppercase font-bold transition-all ${newTaskType === 'scope' || !newTaskType ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-300 hover:bg-white/5'}`}
+                            >
+                              <Package className="w-3 h-3" /> Escopo
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNewTaskType('overdelivery')}
+                              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg text-[10px] uppercase font-bold transition-all ${newTaskType === 'overdelivery' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-300 hover:bg-white/5'}`}
+                            >
+                              <Gift className="w-3 h-3" /> Overdelivery
+                            </button>
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <label className="text-[10px] font-bold text-slate-500 uppercase">Data (Opcional)</label>
@@ -590,8 +650,8 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                               </h4>
                               {tasks.map((task) => {
                                 const isEditing = editingTaskId === task.id;
-                                const responsibleMember = teamMembers.find(m => m.id === task.responsible || m.name === task.responsible);
-
+                                const currentResponsibles = task.responsibles || (task.responsible ? [task.responsible] : []);
+                                
                                 return (
                           <motion.div 
                             key={task.id}
@@ -630,16 +690,33 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                     }`}>
                                       {task.priority === 'high' ? 'URGENTE' : task.priority === 'medium' ? 'NORMAL' : 'BAIXA'}
                                     </span>
-
-                                    {task.responsible && (
-                                      <span className="text-[8px] text-slate-500 flex items-center gap-1">
-                                        {responsibleMember?.photoUrl ? (
-                                          <img src={responsibleMember.photoUrl} alt={responsibleMember.name} className="w-3 h-3 rounded-full object-cover" />
-                                        ) : (
-                                          <User2 className="w-2 h-2" /> 
-                                        )}
-                                        {responsibleMember ? responsibleMember.name : task.responsible}
+                                    {task.taskType === 'overdelivery' && (
+                                      <span className="text-[8px] uppercase font-black tracking-tighter px-2 py-0.5 rounded border bg-purple-500/20 text-purple-400 border-purple-500/20 flex items-center gap-1">
+                                        <Gift className="w-2 h-2" /> OVERDELIVERY
                                       </span>
+                                    )}
+
+                                    {currentResponsibles.length > 0 && (
+                                      <div className="flex -space-x-1.5 items-center">
+                                        {currentResponsibles.map((respId, idx) => {
+                                          const member = teamMembers.find(m => m.id === respId || m.name === respId);
+                                          if (!member) return null;
+                                          return (
+                                            <div key={idx} className="relative z-10 hover:z-20 group/avatar">
+                                              {member.photoUrl ? (
+                                                <img src={member.photoUrl} alt={member.name} className="w-5 h-5 rounded-full object-cover border border-indigo-900 shadow-sm" />
+                                              ) : (
+                                                <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center border border-indigo-900 shadow-sm text-[8px] text-white">
+                                                  <User2 className="w-3 h-3" />
+                                                </div>
+                                              )}
+                                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-1.5 py-0.5 bg-black/80 text-[8px] text-white rounded opacity-0 group-hover/avatar:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">
+                                                {member.name.split(' ')[0]}
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
                                     )}
                                     {task.subTasks && task.subTasks.length > 0 && (
                                       <span className="text-[8px] text-indigo-400 font-bold bg-indigo-500/10 px-1.5 py-0.5 rounded">
@@ -661,18 +738,58 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                         exit={{ height: 0, opacity: 0 }}
                                         className="pt-4 mt-3 border-t border-white/5 space-y-3 overflow-hidden"
                                       >
-                                        <div className="flex flex-wrap items-center gap-4">
+                                        <div className="flex flex-col gap-3">
                                           <div className="flex items-center gap-2">
-                                            <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Responsável:</span>
-                                            <select 
-                                              value={task.responsible || ''}
-                                              onChange={(e) => changeExistingTaskResponsible(selectedClient.id, task, e.target.value)}
-                                              className="bg-transparent text-[10px] text-slate-300 focus:outline-none border-none p-0 cursor-pointer hover:text-indigo-400"
-                                            >
-                                              <option value="">Ninguém</option>
-                                              {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                            </select>
+                                            <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Responsáveis:</span>
+                                            <div className="flex flex-wrap gap-1">
+                                              {teamMembers.map(m => {
+                                                const isSelected = currentResponsibles.includes(m.id);
+                                                return (
+                                                  <button
+                                                    key={m.id}
+                                                    onClick={() => {
+                                                      const newResp = isSelected ? currentResponsibles.filter(id => id !== m.id) : [...currentResponsibles, m.id];
+                                                      onUpdateClient({
+                                                        ...selectedClient,
+                                                        masterTasks: selectedClient.masterTasks.map(t => t.id === task.id ? { ...t, responsibles: newResp, responsible: newResp[0] } : t)
+                                                      });
+                                                    }}
+                                                    className={`px-1.5 py-0.5 rounded text-[9px] uppercase font-bold transition-all ${isSelected ? 'bg-indigo-500 text-white' : 'bg-white/5 text-slate-500 hover:text-slate-300'}`}
+                                                  >
+                                                    {m.name.split(' ')[0]}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
                                           </div>
+                                          <div className="flex flex-wrap items-center gap-4">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Tipo:</span>
+                                              <div className="flex bg-white/5 rounded p-0.5">
+                                                <button
+                                                  onClick={() => {
+                                                    onUpdateClient({
+                                                      ...selectedClient,
+                                                      masterTasks: selectedClient.masterTasks.map(t => t.id === task.id ? { ...t, taskType: 'scope' } : t)
+                                                    });
+                                                  }}
+                                                  className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold transition-all ${task.taskType === 'scope' || !task.taskType ? 'bg-indigo-500 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                                                >
+                                                  Escopo
+                                                </button>
+                                                <button
+                                                  onClick={() => {
+                                                    onUpdateClient({
+                                                      ...selectedClient,
+                                                      masterTasks: selectedClient.masterTasks.map(t => t.id === task.id ? { ...t, taskType: 'overdelivery' } : t)
+                                                    });
+                                                  }}
+                                                  className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold transition-all ${task.taskType === 'overdelivery' ? 'bg-indigo-500 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                                                >
+                                                  Overdelivery
+                                                </button>
+                                              </div>
+                                            </div>
                                           <div className="flex items-center gap-2">
                                             <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Data:</span>
                                             <input 
@@ -695,8 +812,24 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                             Subtarefas
                                           </label>
                                           <div className="flex flex-col gap-1.5">
-                                            {(task.subTasks || []).map(st => (
+                                            {(task.subTasks || []).map((st, index) => (
                                               <div key={st.id} className="flex items-center gap-2 text-[11px] text-slate-400 bg-white/5 px-2 py-1.5 rounded-lg group/st">
+                                                <div className="flex flex-col gap-0.5 opacity-0 group-hover/st:opacity-100 mr-1">
+                                                  <button 
+                                                    onClick={() => reorderSubTaskForExisting(selectedClient.id, task, index, 'up')}
+                                                    disabled={index === 0}
+                                                    className="p-0.5 hover:text-indigo-400 disabled:opacity-30 disabled:hover:text-slate-400"
+                                                  >
+                                                    <ArrowUp className="w-2.5 h-2.5" />
+                                                  </button>
+                                                  <button 
+                                                    onClick={() => reorderSubTaskForExisting(selectedClient.id, task, index, 'down')}
+                                                    disabled={index === (task.subTasks?.length || 0) - 1}
+                                                    className="p-0.5 hover:text-indigo-400 disabled:opacity-30 disabled:hover:text-slate-400"
+                                                  >
+                                                    <ArrowDown className="w-2.5 h-2.5" />
+                                                  </button>
+                                                </div>
                                                 <span className="flex-1">{st.title}</span>
                                                 <button onClick={() => removeSubTaskFromExisting(selectedClient.id, task, st.id)} className="opacity-0 group-hover/st:opacity-100 p-0.5 text-slate-600 hover:text-rose-500"><X className="w-3 h-3" /></button>
                                               </div>

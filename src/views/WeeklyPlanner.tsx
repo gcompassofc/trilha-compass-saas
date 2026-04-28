@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember } from '../types';
 
@@ -142,8 +142,9 @@ clients,
 
   const filteredTasks = weeklyTasks.filter(task => {
     if (selectedUserFilter.length === 0) return true;
-    const resp = task.responsible || 'unassigned';
-    return selectedUserFilter.includes(resp);
+    const taskResponsibles = task.responsibles || (task.responsible ? [task.responsible] : ['unassigned']);
+    if (taskResponsibles.length === 0) taskResponsibles.push('unassigned');
+    return taskResponsibles.some(r => selectedUserFilter.includes(r));
   });
 
   const navigateWeek = (direction: 'prev' | 'next') => {
@@ -167,6 +168,8 @@ clients,
       order: weeklyTasks.filter(t => t.day === day).length,
       subTasks: masterTask?.subTasks || [],
       responsible: masterTask?.responsible,
+      responsibles: masterTask?.responsibles || (masterTask?.responsible ? [masterTask.responsible] : []),
+      taskType: masterTask?.taskType || 'scope',
       priority: masterTask?.priority || 'medium'
     };
 
@@ -234,6 +237,19 @@ clients,
       ...task,
       subTasks: (task.subTasks || []).filter(st => st.id !== subTaskId)
     });
+  };
+
+  const reorderSubTask = (task: WeeklyTask, index: number, direction: 'up' | 'down') => {
+    if (!task.subTasks) return;
+    const newSubTasks = [...task.subTasks];
+    if (direction === 'up' && index > 0) {
+      [newSubTasks[index - 1], newSubTasks[index]] = [newSubTasks[index], newSubTasks[index - 1]];
+    } else if (direction === 'down' && index < newSubTasks.length - 1) {
+      [newSubTasks[index + 1], newSubTasks[index]] = [newSubTasks[index], newSubTasks[index + 1]];
+    } else {
+      return;
+    }
+    onUpdateTask({ ...task, subTasks: newSubTasks });
   };
 
   const changeTaskResponsible = (task: WeeklyTask, responsible: string) => {
@@ -580,8 +596,24 @@ clients,
                                   className="pt-2 border-t border-white/5 space-y-3"
                                 >
                                   <div className="flex flex-col gap-2">
-                                    {(task.subTasks || []).map(st => (
-                                      <div key={st.id} className="flex items-center gap-2 group/st">
+                                    {(task.subTasks || []).map((st, index) => (
+                                      <div key={st.id} className="flex items-center gap-2 group/st relative">
+                                        <div className="flex flex-col gap-0.5 opacity-0 group-hover/st:opacity-100 mr-1">
+                                          <button 
+                                            onClick={() => reorderSubTask(task, index, 'up')}
+                                            disabled={index === 0}
+                                            className="p-0.5 hover:text-indigo-400 disabled:opacity-30 disabled:hover:text-slate-400"
+                                          >
+                                            <ArrowUp className="w-2.5 h-2.5" />
+                                          </button>
+                                          <button 
+                                            onClick={() => reorderSubTask(task, index, 'down')}
+                                            disabled={index === (task.subTasks?.length || 0) - 1}
+                                            className="p-0.5 hover:text-indigo-400 disabled:opacity-30 disabled:hover:text-slate-400"
+                                          >
+                                            <ArrowDown className="w-2.5 h-2.5" />
+                                          </button>
+                                        </div>
                                         <button onClick={() => toggleSubTask(task, st.id)}>
                                           {st.completed 
                                             ? <CheckSquare className="w-3.5 h-3.5 text-emerald-500" />

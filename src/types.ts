@@ -1,5 +1,6 @@
 export type DayOfWeek = 'Segunda' | 'Terça' | 'Quarta' | 'Quinta' | 'Sexta' | 'Sábado' | 'Domingo';
 export type Priority = 'low' | 'medium' | 'high';
+export type TaskType = 'scope' | 'overdelivery';
 
 export interface SubTask {
   id: string;
@@ -25,6 +26,8 @@ export interface MasterTask {
   phase?: string;
   dueDate?: string;
   comments?: TaskComment[];
+  taskType?: TaskType;
+  responsibles?: string[];
 }
 
 export interface Client {
@@ -54,6 +57,8 @@ export interface WeeklyTask {
   priority?: Priority;
   timeSpent?: number; // Total elapsed time in milliseconds
   timerStartedAt?: number | null; // Timestamp when timer started, null if stopped
+  taskType?: TaskType;
+  responsibles?: string[];
 }
 
 export interface TeamMember {
