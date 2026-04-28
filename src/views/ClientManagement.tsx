@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save, ArrowUp, ArrowDown, Upload, Calendar, Package, Gift } from 'lucide-react';
 import { compressImage } from '../utils/imageUtils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -880,6 +880,7 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                             >
                                               Comentar
                                             </button>
+                                          </div>
                                           </div>
                                         </div>
                                       </motion.div>
