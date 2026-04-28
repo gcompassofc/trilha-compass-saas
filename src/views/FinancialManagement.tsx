@@ -45,6 +45,7 @@ export default function FinancialManagement({
 }: FinancialManagementProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
+  const [viewMode, setViewMode] = useState<'dashboard' | 'spreadsheet'>('dashboard');
   const [filterMonth, setFilterMonth] = useState<string>(
     new Date().toISOString().slice(0, 7) // YYYY-MM
   );
@@ -168,12 +169,29 @@ export default function FinancialManagement({
         </div>
         
         <div className="flex items-center gap-3">
-          <input 
-            type="month" 
-            value={filterMonth}
-            onChange={(e) => setFilterMonth(e.target.value)}
-            className="bg-white/5 border border-white/10 text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-          />
+          <div className="flex bg-white/5 border border-white/10 p-1 rounded-xl hidden md:flex">
+            <button 
+              onClick={() => setViewMode('dashboard')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${viewMode === 'dashboard' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-400 hover:text-white'}`}
+            >
+              Visão Geral
+            </button>
+            <button 
+              onClick={() => setViewMode('spreadsheet')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${viewMode === 'spreadsheet' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-400 hover:text-white'}`}
+            >
+              Planilha Macro
+            </button>
+          </div>
+          
+          {viewMode === 'dashboard' && (
+            <input 
+              type="month" 
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className="bg-white/5 border border-white/10 text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            />
+          )}
           <button 
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg shadow-indigo-500/20"
@@ -184,6 +202,8 @@ export default function FinancialManagement({
         </div>
       </div>
 
+      {viewMode === 'dashboard' ? (
+        <>
       {/* CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm relative overflow-hidden">
@@ -383,6 +403,68 @@ export default function FinancialManagement({
         </div>
 
       </div>
+      </>
+      ) : (
+        <div className="bg-white/5 border border-white/10 rounded-2xl flex flex-col backdrop-blur-sm h-[calc(100vh-160px)] overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="overflow-x-auto flex-1 custom-scrollbar">
+            <table className="w-full text-left text-sm text-slate-300">
+              <thead className="text-xs text-slate-400 bg-[#0f172a] uppercase sticky top-0 z-10 border-b border-white/10 shadow-md">
+                <tr>
+                  <th className="px-4 py-4 font-medium w-16 text-center">Status</th>
+                  <th className="px-4 py-4 font-medium w-32">Data</th>
+                  <th className="px-4 py-4 font-medium">Descrição</th>
+                  <th className="px-4 py-4 font-medium w-48">Categoria</th>
+                  <th className="px-4 py-4 font-medium w-48">Cliente</th>
+                  <th className="px-4 py-4 font-medium text-right w-40">Valor</th>
+                  <th className="px-4 py-4 font-medium text-right w-24">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {[...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(t => {
+                  const style = typeStyles[t.type];
+                  return (
+                    <tr key={t.id} className="hover:bg-white/5 transition-colors group">
+                      <td className="px-4 py-3 text-center">
+                        <button onClick={() => handleToggleStatus(t)} className={`mt-1 ${t.status === 'paid' ? 'text-emerald-400' : 'text-slate-500 hover:text-white'}`}>
+                          {t.status === 'paid' ? <CheckCircle2 className="w-5 h-5 mx-auto" /> : <Circle className="w-5 h-5 mx-auto" />}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">{t.date.split('-').reverse().join('/')}</td>
+                      <td className="px-4 py-3 font-medium text-white">{t.description}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-[10px] px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${style.bg} ${style.text}`}>
+                          {categoryLabels[t.category] || 'Outros'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {t.clientId ? (clients.find(c => c.id === t.clientId)?.name || 'Removido') : '-'}
+                      </td>
+                      <td className={`px-4 py-3 text-right font-bold ${style.text}`}>
+                        {t.type !== 'income' && '-'}{formatCurrency(t.amount)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setEditingTransaction(t)} className="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Editar">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => { if(window.confirm('Excluir esta movimentação?')) onDeleteTransaction(t.id); }} className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors" title="Excluir">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {transactions.length === 0 && (
+              <div className="text-center py-20 text-slate-500 text-sm">
+                Nenhuma movimentação cadastrada em todo o histórico.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ADD/EDIT MODAL */}
       <AnimatePresence>
