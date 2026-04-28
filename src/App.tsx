@@ -284,6 +284,11 @@ export default function App() {
     await dbService.reorderTasks(updatedTasks);
   };
 
+  const handleReorderClients = async (reorderedClients: Client[]) => {
+    const updatedClients = reorderedClients.map((c, idx) => ({ ...c, order: idx }));
+    await dbService.reorderClients(updatedClients);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen plasma-bg text-white">
@@ -369,6 +374,7 @@ export default function App() {
                 onUpdateClient={handleUpdateClient}
                 currentWeekId={currentWeekId}
                 onAddWeeklyTask={handleAddTask}
+                onReorderClients={handleReorderClients}
               />
             </motion.div>
           )}

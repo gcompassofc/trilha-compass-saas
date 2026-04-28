@@ -34,6 +34,7 @@ export interface Client {
   logoUrl?: string;
   masterTasks: MasterTask[];
   color: string;
+  order?: number;
 }
 
 export interface WeeklyTask {

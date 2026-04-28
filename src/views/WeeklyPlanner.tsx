@@ -128,6 +128,24 @@ clients,
   const [newSubTaskTitles, setNewSubTaskTitles] = useState<Record<string, string>>({});
   const [newCommentTexts, setNewCommentTexts] = useState<Record<string, string>>({});
 
+  const [selectedUserFilter, setSelectedUserFilter] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('planner_user_filter') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('planner_user_filter', JSON.stringify(selectedUserFilter));
+  }, [selectedUserFilter]);
+
+  const filteredTasks = weeklyTasks.filter(task => {
+    if (selectedUserFilter.length === 0) return true;
+    const resp = task.responsible || 'unassigned';
+    return selectedUserFilter.includes(resp);
+  });
+
   const navigateWeek = (direction: 'prev' | 'next') => {
     const [year, month, day] = currentWeekId.split('-').map(Number);
     const date = new Date(year, month - 1, day);
@@ -273,17 +291,57 @@ clients,
               <LayoutList className="w-4 h-4" />
             </button>
           </div>
+          
+          <div className="flex items-center gap-1 mr-4 bg-black/20 p-1 rounded-lg border border-white/5 overflow-x-auto max-w-[300px] custom-scrollbar">
+            <button 
+              onClick={() => setSelectedUserFilter([])}
+              className={`px-2 py-1 text-[10px] uppercase font-bold rounded-md transition-all whitespace-nowrap ${selectedUserFilter.length === 0 ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              Todos
+            </button>
+            {teamMembers.map(member => {
+              const isSelected = selectedUserFilter.includes(member.id);
+              return (
+                <button
+                  key={member.id}
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedUserFilter(prev => prev.filter(id => id !== member.id));
+                    } else {
+                      setSelectedUserFilter(prev => [...prev, member.id]);
+                    }
+                  }}
+                  className={`px-2 py-1 text-[10px] uppercase font-bold rounded-md transition-all whitespace-nowrap ${isSelected ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  {member.name.split(' ')[0]}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => {
+                const isSelected = selectedUserFilter.includes('unassigned');
+                if (isSelected) {
+                  setSelectedUserFilter(prev => prev.filter(id => id !== 'unassigned'));
+                } else {
+                  setSelectedUserFilter(prev => [...prev, 'unassigned']);
+                }
+              }}
+              className={`px-2 py-1 text-[10px] uppercase font-bold rounded-md transition-all whitespace-nowrap ${selectedUserFilter.includes('unassigned') ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              Sem Resp.
+            </button>
+          </div>
           <div className="flex flex-col items-end">
             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Progresso</span>
             <span className="text-sm font-mono text-indigo-400">
-              {weeklyTasks.filter(t => t.completed).length}/{weeklyTasks.length}
+              {filteredTasks.filter(t => t.completed).length}/{filteredTasks.length}
             </span>
           </div>
           <div className="w-32 h-1.5 bg-white/5 rounded-full overflow-hidden">
             <motion.div 
               className="h-full bg-indigo-500"
               initial={{ width: 0 }}
-              animate={{ width: `${(weeklyTasks.filter(t => t.completed).length / (weeklyTasks.length || 1)) * 100}%` }}
+              animate={{ width: `${(filteredTasks.filter(t => t.completed).length / (filteredTasks.length || 1)) * 100}%` }}
             />
           </div>
         </div>
@@ -293,7 +351,7 @@ clients,
         <div className={`flex-1 ${viewMode === 'kanban' ? 'overflow-x-auto overflow-y-hidden -mx-8 px-8 min-h-0 custom-scrollbar' : 'overflow-y-auto pr-4 custom-scrollbar'}`}>
           <div className={`flex ${viewMode === 'kanban' ? 'gap-6 min-w-max h-full items-start pb-4' : 'flex-col gap-6 max-w-4xl mx-auto w-full h-full'}`}>
           {DAYS.map((day) => {
-            const dayTasks = weeklyTasks
+            const dayTasks = filteredTasks
               .filter(t => t.day === day)
               .sort((a, b) => a.order - b.order);
 

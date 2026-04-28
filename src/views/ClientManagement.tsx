@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save } from 'lucide-react';
+import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save, ArrowUp, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Client, MasterTask, Priority, SubTask, TeamMember, WeeklyTask, DayOfWeek } from '../types';
 import GlassCard from '../components/GlassCard';
@@ -28,9 +28,10 @@ interface ClientManagementProps {
   onUpdateClient: (client: Client) => void;
   currentWeekId?: string;
   onAddWeeklyTask?: (task: Omit<WeeklyTask, 'id'>) => void;
+  onReorderClients?: (clients: Client[]) => void;
 }
 
-export default function ClientManagement({ clients, teamMembers, onAddClient, onDeleteClient, onUpdateClient, currentWeekId, onAddWeeklyTask }: ClientManagementProps) {
+export default function ClientManagement({ clients, teamMembers, onAddClient, onDeleteClient, onUpdateClient, currentWeekId, onAddWeeklyTask, onReorderClients }: ClientManagementProps) {
   const [newClientName, setNewClientName] = useState('');
   const [newClientLogoUrl, setNewClientLogoUrl] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -230,6 +231,21 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
     });
   };
 
+  const handleMoveClient = (index: number, direction: 'up' | 'down', e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onReorderClients) return;
+    
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= clients.length) return;
+    
+    const newClients = [...clients];
+    const temp = newClients[index];
+    newClients[index] = newClients[newIndex];
+    newClients[newIndex] = temp;
+    
+    onReorderClients(newClients);
+  };
+
   const selectedClient = clients.find(c => c.id === selectedClientId);
 
   return (
@@ -299,7 +315,25 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                     </div>
                   </div>
                 </div>
-                <ChevronRight className={`w-4 h-4 transition-transform ${selectedClientId === client.id ? 'translate-x-1 text-indigo-400' : 'text-slate-600'}`} />
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-1 mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div 
+                      onClick={(e) => handleMoveClient(clients.indexOf(client), 'up', e)}
+                      className="p-1 rounded bg-white/5 hover:bg-white/20 text-slate-400 hover:text-white transition-colors"
+                      style={{ visibility: clients.indexOf(client) === 0 ? 'hidden' : 'visible' }}
+                    >
+                      <ArrowUp className="w-3 h-3" />
+                    </div>
+                    <div 
+                      onClick={(e) => handleMoveClient(clients.indexOf(client), 'down', e)}
+                      className="p-1 rounded bg-white/5 hover:bg-white/20 text-slate-400 hover:text-white transition-colors"
+                      style={{ visibility: clients.indexOf(client) === clients.length - 1 ? 'hidden' : 'visible' }}
+                    >
+                      <ArrowDown className="w-3 h-3" />
+                    </div>
+                  </div>
+                  <ChevronRight className={`w-4 h-4 transition-transform ${selectedClientId === client.id ? 'translate-x-1 text-indigo-400' : 'text-slate-600'}`} />
+                </div>
 
               </motion.button>
             ))}

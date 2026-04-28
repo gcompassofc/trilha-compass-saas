@@ -31,12 +31,20 @@ const handleError = (error: any, context: string) => {
 export const dbService = {
   // Clients
   subscribeToClients: (callback: (clients: Client[]) => void) => {
-    const q = query(collection(db, CLIENTS_COLLECTION), orderBy('name'));
+    const q = collection(db, CLIENTS_COLLECTION);
     return onSnapshot(q, (snapshot) => {
       const clients = snapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id
       })) as Client[];
+      
+      clients.sort((a, b) => {
+        const orderA = a.order ?? 9999;
+        const orderB = b.order ?? 9999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name);
+      });
+      
       callback(clients);
     }, (error) => handleError(error, "Listar Clientes"));
   },
@@ -68,6 +76,18 @@ export const dbService = {
 
       await batch.commit();
     } catch (e) { handleError(e, "Deletar Cliente"); }
+  },
+
+  reorderClients: async (clients: Client[]) => {
+    try {
+      const batch = writeBatch(db);
+      for (const client of clients) {
+        const { id, ...data } = client;
+        const docRef = doc(db, CLIENTS_COLLECTION, id);
+        batch.update(docRef, sanitize(data));
+      }
+      await batch.commit();
+    } catch (e) { handleError(e, "Reordenar Clientes"); }
   },
 
   // Weekly Tasks
