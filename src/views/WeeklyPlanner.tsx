@@ -144,8 +144,12 @@ clients,
 
   const filteredTasks = weeklyTasks.filter(task => {
     if (selectedUserFilter.length === 0) return true;
-    const taskResponsibles = task.responsibles || (task.responsible ? [task.responsible] : ['unassigned']);
-    if (taskResponsibles.length === 0) taskResponsibles.push('unassigned');
+    const taskResponsibles = [
+      ...(task.responsibles || []),
+      ...(task.responsible && !(task.responsibles || []).includes(task.responsible) ? [task.responsible] : [])
+    ];
+    // Tasks with no responsible are always visible regardless of filter
+    if (taskResponsibles.length === 0) return true;
     return taskResponsibles.some(r => selectedUserFilter.includes(r));
   });
 
@@ -179,6 +183,7 @@ clients,
     setNewTaskTitle('');
     setNewTaskResponsibles([]);
     setNewTaskType('scope');
+    setSelectedClientId('standalone');
     setAddingTaskForDay(null);
   };
 
@@ -801,7 +806,7 @@ clients,
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Nova Demanda</span>
-                          <button onClick={() => setAddingTaskForDay(null)}><X className="w-4 h-4 text-slate-500" /></button>
+                          <button onClick={() => { setAddingTaskForDay(null); setSelectedClientId('standalone'); setNewTaskTitle(''); }}><X className="w-4 h-4 text-slate-500" /></button>
                         </div>
 
                         <select
