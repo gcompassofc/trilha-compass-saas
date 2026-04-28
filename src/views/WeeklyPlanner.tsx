@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown, Package, Gift } from 'lucide-react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
-import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember } from '../types';
+import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember, TaskType } from '../types';
 
 interface WeeklyPlannerProps {
   clients: Client[];
@@ -127,6 +127,8 @@ clients,
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [newSubTaskTitles, setNewSubTaskTitles] = useState<Record<string, string>>({});
   const [newCommentTexts, setNewCommentTexts] = useState<Record<string, string>>({});
+  const [newTaskResponsibles, setNewTaskResponsibles] = useState<string[]>([]);
+  const [newTaskType, setNewTaskType] = useState<TaskType>('scope');
 
   const [selectedUserFilter, setSelectedUserFilter] = useState<string[]>(() => {
     try {
@@ -167,14 +169,16 @@ clients,
       completed: masterTask ? masterTask.completed : false,
       order: weeklyTasks.filter(t => t.day === day).length,
       subTasks: masterTask?.subTasks || [],
-      responsible: masterTask?.responsible,
-      responsibles: masterTask?.responsibles || (masterTask?.responsible ? [masterTask.responsible] : []),
-      taskType: masterTask?.taskType || 'scope',
+      responsible: masterTask ? masterTask.responsible : newTaskResponsibles[0],
+      responsibles: masterTask ? (masterTask.responsibles || (masterTask.responsible ? [masterTask.responsible] : [])) : newTaskResponsibles,
+      taskType: masterTask ? (masterTask.taskType || 'scope') : newTaskType,
       priority: masterTask?.priority || 'medium'
     };
 
     onAddTask(task);
     setNewTaskTitle('');
+    setNewTaskResponsibles([]);
+    setNewTaskType('scope');
     setAddingTaskForDay(null);
   };
 
@@ -430,17 +434,41 @@ clients,
                                     </span>
                                   )}
 
-                                  {task.responsible && (() => {
-                                    const member = teamMembers.find(m => m.id === task.responsible || m.name === task.responsible);
+                                  {(() => {
+                                    const currentResps = task.responsibles || (task.responsible ? [task.responsible] : []);
+                                    if (currentResps.length === 0) return null;
                                     return (
-                                      <>
-                                        <span className="text-white/20 text-[8px]">•</span>
-                                        <span className="text-[8px] text-slate-400 truncate max-w-[60px]">
-                                          {member ? member.name.split(' ')[0] : task.responsible}
-                                        </span>
-                                      </>
+                                      <div className="flex items-center">
+                                        <span className="text-white/20 text-[8px] mx-1">•</span>
+                                        <div className="flex -space-x-1.5">
+                                          {currentResps.map((respId, idx) => {
+                                            const member = teamMembers.find(m => m.id === respId || m.name === respId);
+                                            if (!member) return null;
+                                            return (
+                                              <div key={idx} className="relative z-10 hover:z-20 group/avatar">
+                                                {member.photoUrl ? (
+                                                  <img src={member.photoUrl} alt={member.name} className="w-3.5 h-3.5 rounded-full object-cover border border-slate-900" />
+                                                ) : (
+                                                  <div className="w-3.5 h-3.5 rounded-full bg-slate-700 flex items-center justify-center border border-slate-900 text-[6px] text-white">
+                                                    <User2 className="w-2 h-2" />
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
                                     );
                                   })()}
+
+                                  {task.taskType === 'overdelivery' && (
+                                    <>
+                                      <span className="text-white/20 text-[8px]">•</span>
+                                      <span className="text-[8px] font-bold text-purple-400 flex items-center gap-0.5">
+                                        <Gift className="w-2 h-2" /> Extra
+                                      </span>
+                                    </>
+                                  )}
 
                                   {task.priority && (
                                     <>
@@ -540,6 +568,34 @@ clients,
                                       PONTUAL
                                     </span>
                                   )}
+                                  {task.taskType === 'overdelivery' && (
+                                    <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 whitespace-nowrap flex items-center gap-1">
+                                      <Gift className="w-2.5 h-2.5" /> OVERDELIVERY
+                                    </span>
+                                  )}
+                                  {(() => {
+                                    const currentResps = task.responsibles || (task.responsible ? [task.responsible] : []);
+                                    if (currentResps.length === 0) return null;
+                                    return (
+                                      <div className="flex -space-x-1.5 items-center ml-1">
+                                        {currentResps.map((respId, idx) => {
+                                          const member = teamMembers.find(m => m.id === respId || m.name === respId);
+                                          if (!member) return null;
+                                          return (
+                                            <div key={idx} className="relative z-10 hover:z-20 group/avatar">
+                                              {member.photoUrl ? (
+                                                <img src={member.photoUrl} alt={member.name} className="w-4 h-4 rounded-full object-cover border border-slate-900" />
+                                              ) : (
+                                                <div className="w-4 h-4 rounded-full bg-slate-700 flex items-center justify-center border border-slate-900 text-[8px] text-white">
+                                                  <User2 className="w-2.5 h-2.5" />
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    );
+                                  })()}
                                   {subTasksTotal > 0 && !isExpanded && (
                                     <span className="text-[10px] text-slate-500 flex items-center gap-1 font-mono">
                                       <ListTodo className="w-3 h-3" /> {subTasksDone}/{subTasksTotal}
@@ -628,38 +684,67 @@ clients,
                                     ))}
                                   </div>
 
-                                  <div className="flex gap-2">
-                                    <input 
-                                      type="text" 
-                                      placeholder="Nova subtarefa..."
-                                      value={newSubTaskTitles[task.id] || ''}
-                                      onChange={(e) => setNewSubTaskTitles({ ...newSubTaskTitles, [task.id]: e.target.value })}
-                                      onKeyDown={(e) => e.key === 'Enter' && addSubTask(task)}
-                                      className="flex-1 bg-white/5 border border-white/5 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
-                                    />
-                                    <button onClick={() => addSubTask(task)} className="p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500/30"><Plus className="w-3 h-3" /></button>
-                                  </div>
-
-                                  <div className="flex flex-wrap items-center gap-4 pt-2 pb-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Responsável:</span>
-                                      <select 
-                                        value={task.responsible || ''}
-                                        onChange={(e) => changeTaskResponsible(task, e.target.value)}
-                                        className="bg-transparent text-[10px] text-slate-300 focus:outline-none border-none p-0 cursor-pointer hover:text-indigo-400"
-                                      >
-                                        <option value="">Ninguém</option>
-                                        {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                      </select>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Data:</span>
+                                  <div className="space-y-4">
+                                    <div className="flex gap-2">
                                       <input 
-                                        type="date"
-                                        value={task.dueDate || ''}
-                                        onChange={(e) => onUpdateTask({ ...task, dueDate: e.target.value })}
-                                        className="bg-transparent text-[10px] text-slate-300 focus:outline-none border-none p-0 cursor-pointer hover:text-indigo-400"
+                                        type="text" 
+                                        placeholder="Nova subtarefa..."
+                                        value={newSubTaskTitles[task.id] || ''}
+                                        onChange={(e) => setNewSubTaskTitles({ ...newSubTaskTitles, [task.id]: e.target.value })}
+                                        onKeyDown={(e) => e.key === 'Enter' && addSubTask(task)}
+                                        className="flex-1 bg-white/5 border border-white/5 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
                                       />
+                                      <button onClick={() => addSubTask(task)} className="p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500/30"><Plus className="w-3 h-3" /></button>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-6 pt-2 pb-2 border-t border-white/5">
+                                      <div className="flex flex-col gap-1.5">
+                                        <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Responsáveis:</span>
+                                        <div className="flex flex-wrap gap-1">
+                                          {teamMembers.map(m => {
+                                            const isSelected = (task.responsibles || (task.responsible ? [task.responsible] : [])).includes(m.id);
+                                            return (
+                                              <button
+                                                key={m.id}
+                                                onClick={() => {
+                                                  const currentResps = task.responsibles || (task.responsible ? [task.responsible] : []);
+                                                  const newResps = isSelected ? currentResps.filter(id => id !== m.id) : [...currentResps, m.id];
+                                                  onUpdateTask({ ...task, responsibles: newResps, responsible: newResps[0] || undefined });
+                                                }}
+                                                className={`px-1.5 py-0.5 rounded text-[8px] uppercase font-bold transition-all ${isSelected ? 'bg-indigo-500 text-white' : 'bg-white/5 text-slate-500 hover:text-slate-300'}`}
+                                              >
+                                                {m.name.split(' ')[0]}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                      <div className="flex flex-col gap-1.5">
+                                        <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Tipo:</span>
+                                        <div className="flex bg-white/5 rounded p-0.5">
+                                          <button
+                                            onClick={() => onUpdateTask({ ...task, taskType: 'scope' })}
+                                            className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold transition-all ${task.taskType === 'scope' || !task.taskType ? 'bg-indigo-500 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                                          >
+                                            Escopo
+                                          </button>
+                                          <button
+                                            onClick={() => onUpdateTask({ ...task, taskType: 'overdelivery' })}
+                                            className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold transition-all ${task.taskType === 'overdelivery' ? 'bg-indigo-500 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                                          >
+                                            Overdelivery
+                                          </button>
+                                        </div>
+                                      </div>
+                                      <div className="flex flex-col gap-1.5">
+                                        <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Data:</span>
+                                        <input 
+                                          type="date"
+                                          value={task.dueDate || ''}
+                                          onChange={(e) => onUpdateTask({ ...task, dueDate: e.target.value })}
+                                          className="bg-transparent text-[10px] text-slate-300 focus:outline-none border-none p-0 cursor-pointer hover:text-indigo-400"
+                                        />
+                                      </div>
                                     </div>
                                   </div>
 
@@ -761,14 +846,59 @@ clients,
                              </div>
                           </div>
                         ) : (
-                          <textarea
-                            autoFocus
-                            placeholder="Descreva a demanda..."
-                            value={newTaskTitle}
-                            onChange={(e) => setNewTaskTitle(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleAddTask(day)}
-                            className="w-full bg-slate-900/50 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 min-h-[60px]"
-                          />
+                          <div className="space-y-4">
+                            <textarea
+                              autoFocus
+                              placeholder="Descreva a demanda..."
+                              value={newTaskTitle}
+                              onChange={(e) => setNewTaskTitle(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleAddTask(day)}
+                              className="w-full bg-slate-900/50 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 min-h-[60px]"
+                            />
+                            
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-bold text-slate-500 uppercase">Responsáveis</label>
+                              <div className="flex flex-wrap gap-1 p-1 bg-black/20 rounded-lg border border-white/5">
+                                {teamMembers.map(m => {
+                                  const isSelected = newTaskResponsibles.includes(m.id);
+                                  return (
+                                    <button
+                                      key={m.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setNewTaskResponsibles(prev => 
+                                          isSelected ? prev.filter(id => id !== m.id) : [...prev, m.id]
+                                        );
+                                      }}
+                                      className={`px-1.5 py-0.5 rounded text-[8px] uppercase font-bold transition-all ${isSelected ? 'bg-indigo-500 text-white shadow-md' : 'bg-transparent text-slate-400 hover:bg-white/10'}`}
+                                    >
+                                      {m.name.split(' ')[0]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-bold text-slate-500 uppercase">Tipo</label>
+                              <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
+                                <button
+                                  type="button"
+                                  onClick={() => setNewTaskType('scope')}
+                                  className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-[9px] uppercase font-bold transition-all ${newTaskType === 'scope' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                  <Package className="w-3 h-3" /> Escopo
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setNewTaskType('overdelivery')}
+                                  className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-[9px] uppercase font-bold transition-all ${newTaskType === 'overdelivery' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                  <Gift className="w-3 h-3" /> Overdelivery
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         )}
 
                         {selectedClientId === 'standalone' && (

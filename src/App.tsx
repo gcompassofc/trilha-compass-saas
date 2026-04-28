@@ -181,6 +181,8 @@ export default function App() {
                    completed: newMt.completed,
                    subTasks: newMt.subTasks,
                    responsible: newMt.responsible,
+                   responsibles: newMt.responsibles,
+                   taskType: newMt.taskType,
                    comments: newMt.comments,
                    dueDate: newMt.dueDate
                 };
@@ -205,6 +207,8 @@ export default function App() {
                  completed: newMt.completed,
                  subTasks: newMt.subTasks,
                  responsible: newMt.responsible,
+                 responsibles: newMt.responsibles,
+                 taskType: newMt.taskType,
                  comments: newMt.comments,
                  dueDate: newMt.dueDate
               };
@@ -259,6 +263,8 @@ export default function App() {
             completed: updated.completed,
             subTasks: updated.subTasks,
             responsible: updated.responsible,
+            responsibles: updated.responsibles,
+            taskType: updated.taskType,
             comments: updated.comments,
             dueDate: updated.dueDate
           };

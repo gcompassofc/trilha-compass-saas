@@ -123,7 +123,12 @@ export default function GlobalSearch({ isOpen, onClose, clients, weeklyTasks, te
                               <div className="flex items-center gap-2 mt-1">
                                 <span className="text-[9px] text-slate-400 font-mono bg-black/20 px-1.5 py-0.5 rounded border border-white/5">{task.day}</span>
                                 {client && <span className="text-[9px] uppercase font-bold tracking-wider" style={{ color: client.color }}>{client.name}</span>}
-                                {task.responsible && <span className="text-[9px] text-slate-500">Resp: {teamMembers.find(m => m.id === task.responsible || m.name === task.responsible)?.name || task.responsible}</span>}
+                                {(() => {
+                                  const currentResps = task.responsibles || (task.responsible ? [task.responsible] : []);
+                                  if (currentResps.length === 0) return null;
+                                  return <span className="text-[9px] text-slate-500">Resp: {currentResps.map(id => teamMembers.find(m => m.id === id || m.name === id)?.name.split(' ')[0] || id).join(', ')}</span>
+                                })()}
+                                {task.taskType === 'overdelivery' && <span className="text-[9px] text-purple-400 font-bold bg-purple-500/10 px-1.5 py-0.5 rounded">EXTRA</span>}
                               </div>
                             </div>
                           </div>
@@ -145,8 +150,13 @@ export default function GlobalSearch({ isOpen, onClose, clients, weeklyTasks, te
                               <span className={`text-[13px] truncate ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>{task.title}</span>
                               <div className="flex items-center gap-2 mt-1">
                                 <span className="text-[9px] uppercase font-bold tracking-wider" style={{ color: client.color }}>{client.name}</span>
-                                {task.responsible && <span className="text-[9px] text-slate-500">Resp: {teamMembers.find(m => m.id === task.responsible || m.name === task.responsible)?.name || task.responsible}</span>}
+                                {(() => {
+                                  const currentResps = task.responsibles || (task.responsible ? [task.responsible] : []);
+                                  if (currentResps.length === 0) return null;
+                                  return <span className="text-[9px] text-slate-500">Resp: {currentResps.map(id => teamMembers.find(m => m.id === id || m.name === id)?.name.split(' ')[0] || id).join(', ')}</span>
+                                })()}
                                 {task.priority === 'high' && <span className="text-[9px] text-rose-500 font-bold bg-rose-500/10 px-1.5 py-0.5 rounded">URGENTE</span>}
+                                {task.taskType === 'overdelivery' && <span className="text-[9px] text-purple-400 font-bold bg-purple-500/10 px-1.5 py-0.5 rounded">EXTRA</span>}
                               </div>
                             </div>
                           </div>

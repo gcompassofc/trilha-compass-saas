@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save, ArrowUp, ArrowDown, Upload, Calendar } from 'lucide-react';
+import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save, ArrowUp, ArrowDown, Upload, Calendar, Package, Gift } from 'lucide-react';
 import { compressImage } from '../utils/imageUtils';
 import { motion, AnimatePresence } from 'motion/react';
-import { Client, MasterTask, Priority, SubTask, TeamMember, WeeklyTask, DayOfWeek } from '../types';
+import { Client, MasterTask, Priority, SubTask, TeamMember, WeeklyTask, DayOfWeek, TaskType } from '../types';
 import GlassCard from '../components/GlassCard';
 
 const getWeekIdFromDateString = (dateStr: string) => {
