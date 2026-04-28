@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid, ListTodo, MessageSquare } from 'lucide-react';
-import { motion, AnimatePresence, Reorder } from 'motion/react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical } from 'lucide-react';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember } from '../types';
 
 interface WeeklyPlannerProps {
@@ -78,6 +78,34 @@ const TaskTimer = ({ task, onUpdateTask }: { task: WeeklyTask, onUpdateTask: (t:
       {isRunning ? <Pause className="w-2.5 h-2.5" fill="currentColor" /> : <Play className="w-2.5 h-2.5" fill="currentColor" />}
       <span>{formatTime(totalSeconds)}</span>
     </button>
+  );
+};
+
+const DraggableWrapper = ({ task, className, style, children }: any) => {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={task}
+      dragListener={false}
+      dragControls={controls}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`group transition-all ${className}`}
+      style={style}
+    >
+      <div className="flex items-start gap-1 w-full h-full">
+        <div 
+          className="pt-1.5 cursor-grab active:cursor-grabbing text-slate-600 hover:text-indigo-400 touch-none flex-shrink-0"
+          onPointerDown={(e) => controls.start(e)}
+          style={{ touchAction: 'none' }}
+        >
+          <GripVertical className="w-3.5 h-3.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          {children}
+        </div>
+      </div>
+    </Reorder.Item>
   );
 };
 
@@ -298,12 +326,10 @@ clients,
                       const progress = subTasksTotal > 0 ? (subTasksDone / subTasksTotal) * 100 : 0;
                       
                       return (
-                        <Reorder.Item
+                        <DraggableWrapper
                           key={task.id}
-                          value={task}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`group transition-all cursor-grab active:cursor-grabbing ${
+                          task={task}
+                          className={`${
                             viewMode === 'kanban' 
                               ? `p-2.5 rounded-xl border ${
                                   task.completed 
@@ -585,7 +611,7 @@ clients,
                               )}
                             </AnimatePresence>
                           </div>
-                        </Reorder.Item>
+                        </DraggableWrapper>
                       );
                     })}
                   </Reorder.Group>
