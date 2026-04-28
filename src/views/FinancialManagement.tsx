@@ -12,7 +12,9 @@ import {
   MoreVertical,
   CheckCircle2,
   Circle,
-  PieChart
+  PieChart,
+  Edit2,
+  Trash2
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -42,6 +44,7 @@ export default function FinancialManagement({
   onDeleteTransaction
 }: FinancialManagementProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [filterMonth, setFilterMonth] = useState<string>(
     new Date().toISOString().slice(0, 7) // YYYY-MM
   );
@@ -331,7 +334,25 @@ export default function FinancialManagement({
                         <p className="text-xs text-slate-400 mt-1">{t.date.split('-').reverse().join('/')}</p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => setEditingTransaction(t)}
+                          className="p-1 text-slate-500 hover:text-white transition-colors"
+                          title="Editar"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if(window.confirm('Excluir esta movimentação?')) onDeleteTransaction(t.id);
+                          }}
+                          className="p-1 text-slate-500 hover:text-rose-400 transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                       <p className={`text-sm font-bold ${style.text}`}>
                         {t.type !== 'income' && '-'}{formatCurrency(t.amount)}
                       </p>
@@ -363,16 +384,25 @@ export default function FinancialManagement({
 
       </div>
 
-      {/* ADD MODAL */}
+      {/* ADD/EDIT MODAL */}
       <AnimatePresence>
-        {isAddModalOpen && (
+        {(isAddModalOpen || editingTransaction) && (
           <TransactionModal 
-            onClose={() => setIsAddModalOpen(false)}
-            onSave={(t) => {
-              onAddTransaction(t);
+            onClose={() => {
               setIsAddModalOpen(false);
+              setEditingTransaction(null);
+            }}
+            onSave={(t) => {
+              if (editingTransaction) {
+                onUpdateTransaction({ ...t, id: editingTransaction.id } as FinancialTransaction);
+              } else {
+                onAddTransaction(t);
+              }
+              setIsAddModalOpen(false);
+              setEditingTransaction(null);
             }}
             clients={clients}
+            initialData={editingTransaction}
           />
         )}
       </AnimatePresence>
@@ -385,19 +415,21 @@ export default function FinancialManagement({
 function TransactionModal({ 
   onClose, 
   onSave, 
-  clients 
+  clients,
+  initialData
 }: { 
   onClose: () => void, 
   onSave: (t: Omit<FinancialTransaction, 'id'>) => void,
-  clients: Client[]
+  clients: Client[],
+  initialData?: FinancialTransaction | null
 }) {
-  const [type, setType] = useState<TransactionType>('income');
-  const [category, setCategory] = useState<TransactionCategory>('income_fixed');
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [status, setStatus] = useState<'pending' | 'paid'>('paid');
-  const [clientId, setClientId] = useState('');
+  const [type, setType] = useState<TransactionType>(initialData?.type || 'income');
+  const [category, setCategory] = useState<TransactionCategory>(initialData?.category || 'income_fixed');
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [amount, setAmount] = useState(initialData ? initialData.amount.toString() : '');
+  const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
+  const [status, setStatus] = useState<'pending' | 'paid'>(initialData?.status || 'paid');
+  const [clientId, setClientId] = useState(initialData?.clientId || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -446,7 +478,7 @@ function TransactionModal({
         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
         className="bg-[#0f172a] border border-white/10 p-6 rounded-2xl w-full max-w-md relative z-10 shadow-2xl"
       >
-        <h2 className="text-xl font-bold text-white mb-6">Nova Movimentação</h2>
+        <h2 className="text-xl font-bold text-white mb-6">{initialData ? 'Editar Movimentação' : 'Nova Movimentação'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           
           <div className="grid grid-cols-2 gap-2 p-1 bg-white/5 rounded-xl">
