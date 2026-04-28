@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, Users, Image as ImageIcon, X, Edit2, Check } from 'lucide-react';
+import { Plus, Trash2, Users, Image as ImageIcon, X, Edit2, Check, Upload } from 'lucide-react';
+import { compressImage } from '../utils/imageUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import { TeamMember } from '../types';
 import GlassCard from '../components/GlassCard';
@@ -89,16 +90,34 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
               />
             </div>
             <div className="flex-1 space-y-2 w-full">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">URL da Foto (Opcional)</label>
-              <div className="flex gap-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Foto (URL ou Upload)</label>
+              <div className="flex gap-2 relative items-center">
                 <input
                   type="text"
                   placeholder="https://..."
                   value={photoUrl}
                   onChange={(e) => setPhotoUrl(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveMember()}
-                  className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                  className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 pr-10"
                 />
+                <label className="absolute right-14 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors text-slate-400 hover:text-white" title="Fazer upload de imagem">
+                  <Upload className="w-4 h-4" />
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={async (e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        try {
+                          const b64 = await compressImage(e.target.files[0], 200, 200);
+                          setPhotoUrl(b64);
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }
+                    }} 
+                  />
+                </label>
                 <button 
                   onClick={handleSaveMember}
                   className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center min-w-[50px]"

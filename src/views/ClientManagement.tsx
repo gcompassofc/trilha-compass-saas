@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save, ArrowUp, ArrowDown, Upload, Calendar } from 'lucide-react';
+import { compressImage } from '../utils/imageUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Client, MasterTask, Priority, SubTask, TeamMember, WeeklyTask, DayOfWeek } from '../types';
 import GlassCard from '../components/GlassCard';
@@ -267,14 +268,34 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                 className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
               />
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="URL da logo (opcional)..."
-                  value={newClientLogoUrl}
-                  onChange={(e) => setNewClientLogoUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddClient()}
-                  className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
-                />
+                <div className="flex-1 relative flex items-center">
+                  <input
+                    type="text"
+                    placeholder="URL da logo (opcional)..."
+                    value={newClientLogoUrl}
+                    onChange={(e) => setNewClientLogoUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddClient()}
+                    className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                  />
+                  <label className="absolute right-2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors text-slate-400 hover:text-white" title="Fazer upload de imagem">
+                    <Upload className="w-4 h-4" />
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={async (e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          try {
+                            const b64 = await compressImage(e.target.files[0], 200, 200);
+                            setNewClientLogoUrl(b64);
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }
+                      }} 
+                    />
+                  </label>
+                </div>
                 <button 
                   onClick={handleAddClient}
                   className="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
@@ -375,9 +396,27 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                              <input type="text" value={editClientName} onChange={e => setEditClientName(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-1 focus:ring-indigo-500" />
                           </div>
                           <div>
-                             <label className="text-[10px] text-slate-500 font-bold uppercase">Logo (URL da Imagem)</label>
-                             <div className="flex gap-1">
-                               <input type="text" value={editClientLogoUrl} onChange={e => setEditClientLogoUrl(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white" placeholder="https://..." />
+                             <label className="text-[10px] text-slate-500 font-bold uppercase">Logo (URL ou Upload)</label>
+                             <div className="flex gap-1 relative items-center">
+                               <input type="text" value={editClientLogoUrl} onChange={e => setEditClientLogoUrl(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 pr-8 text-xs text-white" placeholder="https://..." />
+                               <label className="absolute right-1 p-1 bg-white/10 hover:bg-white/20 rounded cursor-pointer transition-colors text-slate-300" title="Upload Imagem">
+                                 <Upload className="w-3 h-3" />
+                                 <input 
+                                   type="file" 
+                                   accept="image/*" 
+                                   className="hidden" 
+                                   onChange={async (e) => {
+                                     if (e.target.files && e.target.files[0]) {
+                                       try {
+                                         const b64 = await compressImage(e.target.files[0], 200, 200);
+                                         setEditClientLogoUrl(b64);
+                                       } catch (err) {
+                                         console.error(err);
+                                       }
+                                     }
+                                   }} 
+                                 />
+                               </label>
                              </div>
                           </div>
                           <div>
@@ -510,13 +549,50 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-2 mb-4">Demandas em Aberto</h4>
-                      {selectedClient.masterTasks.filter(t => !t.completed).map((task) => {
-                        const isEditing = editingTaskId === task.id;
-                        const responsibleMember = teamMembers.find(m => m.id === task.responsible || m.name === task.responsible);
+                    <div className="space-y-6">
+                      {(() => {
+                        const openTasks = selectedClient.masterTasks.filter(t => !t.completed);
+                        if (openTasks.length === 0) return (
+                          <div className="text-center py-8 bg-white/5 rounded-xl border border-white/5">
+                            <p className="text-slate-500 font-light text-sm">Nenhuma demanda em aberto.</p>
+                          </div>
+                        );
 
-                        return (
+                        const grouped = openTasks.reduce((acc, task) => {
+                          if (!task.dueDate) {
+                            if (!acc['Backlog / Sem Data']) acc['Backlog / Sem Data'] = [];
+                            acc['Backlog / Sem Data'].push(task);
+                          } else {
+                            const weekId = getWeekIdFromDateString(task.dueDate);
+                            const [year, month, day] = weekId.split('-');
+                            const weekName = `Semana de ${day}/${month}`;
+                            if (!acc[weekName]) acc[weekName] = [];
+                            acc[weekName].push(task);
+                          }
+                          return acc;
+                        }, {} as Record<string, MasterTask[]>);
+
+                        const weekKeys = Object.keys(grouped).filter(k => k !== 'Backlog / Sem Data').sort((a, b) => {
+                          const [dayA, monthA] = a.split(' ')[2].split('/');
+                          const [dayB, monthB] = b.split(' ')[2].split('/');
+                          return `${monthA}${dayA}`.localeCompare(`${monthB}${dayB}`);
+                        });
+                        
+                        const sortedKeys = ['Backlog / Sem Data', ...weekKeys].filter(k => grouped[k] && grouped[k].length > 0);
+
+                        return sortedKeys.map(groupName => {
+                          const tasks = grouped[groupName];
+                          return (
+                            <div key={groupName} className="space-y-2 mb-6">
+                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-2 mb-4 flex items-center gap-2">
+                                <Calendar className="w-3.5 h-3.5" /> {groupName} 
+                                <span className="bg-white/5 px-2 py-0.5 rounded-md text-[10px] ml-auto">{tasks.length} {tasks.length === 1 ? 'demanda' : 'demandas'}</span>
+                              </h4>
+                              {tasks.map((task) => {
+                                const isEditing = editingTaskId === task.id;
+                                const responsibleMember = teamMembers.find(m => m.id === task.responsible || m.name === task.responsible);
+
+                                return (
                           <motion.div 
                             key={task.id}
                             layout
@@ -695,7 +771,11 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                             </div>
                           </motion.div>
                         );
-                      })}
+                              })}
+                            </div>
+                          );
+                        });
+                      })()}
                       
                       {selectedClient.masterTasks.some(t => t.completed) && (
                         <>
