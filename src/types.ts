@@ -60,3 +60,29 @@ export interface TeamMember {
   name: string;
   photoUrl?: string;
 }
+
+export type TransactionCategory = 
+  | 'income_fixed' 
+  | 'income_recurring' 
+  | 'cost_infra' 
+  | 'cost_tools' 
+  | 'investment_ads' 
+  | 'investment_consulting' 
+  | 'withdrawal_kallyl' 
+  | 'withdrawal_allyson' 
+  | 'other';
+
+export type TransactionType = 'income' | 'cost' | 'investment' | 'withdrawal';
+export type TransactionStatus = 'pending' | 'paid';
+
+export interface FinancialTransaction {
+  id: string;
+  description: string;
+  amount: number;
+  date: string; // ISO date YYYY-MM-DD
+  type: TransactionType;
+  category: TransactionCategory;
+  status: TransactionStatus;
+  clientId?: string; 
+  createdAt: number;
+}

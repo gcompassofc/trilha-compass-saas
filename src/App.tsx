@@ -9,10 +9,11 @@ import Sidebar from './components/Sidebar';
 import WeeklyPlanner from './views/WeeklyPlanner';
 import ClientManagement from './views/ClientManagement';
 import TeamManagement from './views/TeamManagement';
+import FinancialManagement from './views/FinancialManagement';
 import Login from './components/Login';
 import GlobalSearch from './components/GlobalSearch';
 import { Search } from 'lucide-react';
-import { Client, WeeklyTask, DayOfWeek, TeamMember } from './types';
+import { Client, WeeklyTask, DayOfWeek, TeamMember, FinancialTransaction } from './types';
 import { dbService } from './services/db';
 import { auth, db } from './firebase/config';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -40,10 +41,11 @@ const getDayOfWeekFromDateString = (dateStr: string): DayOfWeek => {
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'planner' | 'clients' | 'team'>('planner');
+  const [activeTab, setActiveTab] = useState<'planner' | 'clients' | 'team' | 'financial'>('planner');
   const [clients, setClients] = useState<Client[]>([]);
   const [weeklyTasks, setWeeklyTasks] = useState<WeeklyTask[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [currentWeekId, setCurrentWeekId] = useState(getWeekId(new Date()));
   const [loading, setLoading] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -84,9 +86,14 @@ export default function App() {
       setTeamMembers(data);
     });
 
+    const unsubTransactions = dbService.subscribeToTransactions((data) => {
+      setTransactions(data);
+    });
+
     return () => {
       unsubClients();
       unsubTeam();
+      unsubTransactions();
     };
   }, [user]);
 
@@ -105,6 +112,18 @@ export default function App() {
 
   const handleDeleteClient = async (id: string) => {
     await dbService.deleteClient(id);
+  };
+
+  const handleAddTransaction = async (transaction: Omit<FinancialTransaction, 'id'>) => {
+    await dbService.addTransaction(transaction);
+  };
+
+  const handleUpdateTransaction = async (transaction: FinancialTransaction) => {
+    await dbService.updateTransaction(transaction);
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    await dbService.deleteTransaction(id);
   };
 
   const handleUpdateClient = async (updated: Client) => {
@@ -256,20 +275,6 @@ export default function App() {
   };
 
   const handleDeleteTask = async (id: string) => {
-    // 1. Delete from Client Backlog if linked (Two-way sync)
-    const taskToDelete = weeklyTasks.find(t => t.id === id);
-    if (taskToDelete && taskToDelete.clientId) {
-      const client = clients.find(c => c.id === taskToDelete.clientId);
-      if (client) {
-         const updatedMasterTasks = client.masterTasks.filter(mt => 
-            taskToDelete.masterTaskId ? mt.id !== taskToDelete.masterTaskId : mt.title !== taskToDelete.title
-         );
-         if (updatedMasterTasks.length !== client.masterTasks.length) {
-            await dbService.updateClient({ ...client, masterTasks: updatedMasterTasks });
-         }
-      }
-    }
-    
     // 2. Delete the task
     await dbService.deleteTask(id);
   };
@@ -378,6 +383,24 @@ export default function App() {
             >
               <TeamManagement 
                 teamMembers={teamMembers}
+              />
+            </motion.div>
+          )}
+          {activeTab === 'financial' && (
+            <motion.div
+              key="financial"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar pr-2 pb-8"
+            >
+              <FinancialManagement 
+                transactions={transactions}
+                clients={clients}
+                onAddTransaction={handleAddTransaction}
+                onUpdateTransaction={handleUpdateTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
               />
             </motion.div>
           )}

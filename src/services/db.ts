@@ -13,7 +13,7 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Client, WeeklyTask, TeamMember } from '../types';
+import { Client, WeeklyTask, TeamMember, FinancialTransaction } from '../types';
 
 const CLIENTS_COLLECTION = 'clients';
 const TASKS_COLLECTION = 'weeklyTasks';
@@ -149,8 +149,37 @@ export const dbService = {
     try {
       await deleteDoc(doc(db, TEAM_COLLECTION, id));
     } catch (e) { handleError(e, "Deletar Membro"); }
+  },
+
+  // Financial Transactions
+  subscribeToTransactions: (callback: (transactions: FinancialTransaction[]) => void) => {
+    const q = query(collection(db, 'financialTransactions'), orderBy('date', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+      const transactions = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as FinancialTransaction[];
+      callback(transactions);
+    }, (error) => handleError(error, "Listar Transações Financeiras"));
+  },
+
+  addTransaction: async (transaction: Omit<FinancialTransaction, 'id'>) => {
+    try {
+      const docRef = await addDoc(collection(db, 'financialTransactions'), sanitize(transaction));
+      return docRef.id;
+    } catch (e) { handleError(e, "Adicionar Transação"); }
+  },
+
+  updateTransaction: async (transaction: FinancialTransaction) => {
+    try {
+      const { id, ...data } = transaction;
+      await updateDoc(doc(db, 'financialTransactions', id), sanitize(data));
+    } catch (e) { handleError(e, "Atualizar Transação"); }
+  },
+
+  deleteTransaction: async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'financialTransactions', id));
+    } catch (e) { handleError(e, "Deletar Transação"); }
   }
 };
-
-
-
