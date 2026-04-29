@@ -374,7 +374,7 @@ clients,
 
       <div className="relative flex-1 min-h-0 flex flex-col group/kanban pb-8">
         <div className={`flex-1 ${viewMode === 'kanban' ? 'overflow-x-auto overflow-y-hidden -mx-8 px-8 min-h-0 custom-scrollbar' : 'overflow-y-auto pr-4 custom-scrollbar'}`}>
-          <div className={`flex ${viewMode === 'kanban' ? 'gap-6 min-w-max h-full items-start pb-4' : 'flex-col gap-6 max-w-4xl mx-auto w-full h-full'}`}>
+          <div className={`flex ${viewMode === 'kanban' ? 'gap-4 h-full items-start pb-4' : 'flex-col gap-6 max-w-4xl mx-auto w-full h-full'}`}>
           {DAYS.map((day) => {
             const dayTasks = filteredTasks
               .filter(t => t.day === day)
@@ -383,7 +383,7 @@ clients,
             const isToday = getDateForDayOfWeek(currentWeekId, day) === new Date().toISOString().split('T')[0];
 
             return (
-              <div key={day} className={`${viewMode === 'kanban' ? 'w-[280px] shrink-0 max-h-full' : 'w-full'} flex flex-col gap-4 relative ${isToday ? 'z-10' : ''}`}>
+              <div key={day} className={`${viewMode === 'kanban' ? 'min-w-[240px] flex-1 max-h-full' : 'w-full'} flex flex-col gap-4 relative ${isToday ? 'z-10' : ''}`}>
                 <div className="flex items-center justify-between px-3">
                   <div className="flex items-center gap-3">
                     <h2 className={`font-bold text-xl ${isToday ? 'text-indigo-400 underline underline-offset-8 decoration-indigo-500/30' : 'text-slate-200'}`}>{day}</h2>
@@ -394,12 +394,12 @@ clients,
                   </span>
                 </div>
 
-                <div className={`glass-panel p-3 flex flex-col gap-3 transition-colors ${viewMode === 'kanban' ? 'min-h-[150px] shrink min-h-0' : 'flex-1'} ${isToday ? 'border-indigo-500/20 bg-indigo-500/[0.03]' : ''}`}>
-                  <Reorder.Group 
-                    axis="y" 
-                    values={dayTasks} 
+                <div className={`glass-panel p-3 flex flex-col gap-3 transition-colors ${viewMode === 'kanban' ? 'flex-1 min-h-[150px] min-h-0 overflow-hidden' : 'flex-1'} ${isToday ? 'border-indigo-500/20 bg-indigo-500/[0.03]' : ''}`}>
+                  <Reorder.Group
+                    axis="y"
+                    values={dayTasks}
                     onReorder={(newTasks) => onReorderTasks(day, newTasks)}
-                    className={`flex flex-col gap-2 ${viewMode === 'kanban' ? 'overflow-y-auto overflow-x-hidden custom-scrollbar pr-1 shrink min-h-0' : ''}`}
+                    className={`flex flex-col gap-2 ${viewMode === 'kanban' ? 'overflow-y-auto overflow-x-hidden custom-scrollbar pr-1 flex-1 min-h-0' : ''}`}
                   >
                     {dayTasks.map((task) => {
                       const client = clients.find(c => c.id === task.clientId);
