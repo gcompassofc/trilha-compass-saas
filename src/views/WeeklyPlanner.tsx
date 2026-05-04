@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown, Package, Gift } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown, Package, Gift, Download } from 'lucide-react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember, TaskType } from '../types';
+import { exportPlannerTasksToCSV } from '../utils/exportUtils';
 
 interface WeeklyPlannerProps {
   clients: Client[];
@@ -282,8 +283,9 @@ clients,
   return (
     <div className="space-y-8 h-full flex flex-col">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-        <div className="gap-2 flex flex-col">
-          <h1 className="text-2xl md:text-4xl font-bold prisma-text tracking-tight">Sprint Semanal</h1>
+        <div className="flex items-center gap-4">
+          <div className="gap-2 flex flex-col">
+            <h1 className="text-2xl md:text-4xl font-bold prisma-text tracking-tight">Sprint Semanal</h1>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-1">
               <button onClick={() => navigateWeek('prev')} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors">
@@ -298,6 +300,13 @@ clients,
             </div>
             <p className="text-slate-400 font-light">Distribua as demandas nos dias da semana.</p>
           </div>
+          <button 
+            onClick={() => exportPlannerTasksToCSV(weeklyTasks, clients, teamMembers, currentWeekId)}
+            className="hidden md:flex ml-4 items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-xl transition-all border border-emerald-500/20 shadow-sm self-start mt-2"
+          >
+            <Download className="w-4 h-4" />
+            <span className="text-sm font-bold">Exportar Planilha</span>
+          </button>
         </div>
         <div className="hidden lg:flex gap-4 items-center bg-white/5 border border-white/5 px-4 py-2 rounded-2xl">
           <div className="flex bg-black/20 rounded-lg p-1 border border-white/5 mr-4">

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save, ArrowUp, ArrowDown, Upload, Calendar, Package, Gift } from 'lucide-react';
+import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save, ArrowUp, ArrowDown, Upload, Calendar, Package, Gift, Download } from 'lucide-react';
 import { compressImage } from '../utils/imageUtils';
+import { exportClientTasksToCSV } from '../utils/exportUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Client, MasterTask, Priority, SubTask, TeamMember, WeeklyTask, DayOfWeek, TaskType } from '../types';
 import GlassCard from '../components/GlassCard';
@@ -278,9 +279,18 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl md:text-4xl font-bold prisma-text">Gestão de Clientes</h1>
-        <p className="text-slate-400 font-light">Organize o backlog de demandas por projeto e as prioridades de cada cliente.</p>
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl md:text-4xl font-bold prisma-text">Gestão de Clientes</h1>
+          <p className="text-slate-400 font-light">Organize o backlog de demandas por projeto e as prioridades de cada cliente.</p>
+        </div>
+        <button 
+          onClick={() => exportClientTasksToCSV(clients, teamMembers)}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-xl transition-all border border-emerald-500/20 shadow-sm"
+        >
+          <Download className="w-4 h-4" />
+          <span className="text-sm font-bold">Exportar Planilha</span>
+        </button>
       </header>
 
       {!selectedClientId ? (
