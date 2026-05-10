@@ -14,7 +14,8 @@ import {
   Circle,
   PieChart,
   Edit2,
-  Trash2
+  Trash2,
+  Briefcase
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -184,6 +185,26 @@ export default function FinancialManagement({
     if (!confirm(`Marcar ${pendingInRange.length} movimentação(ões) pendente(s) ${label} como pagas?`)) return;
     pendingInRange.forEach(t => onUpdateTransaction({ ...t, status: 'paid' }));
   };
+
+  const byClient = useMemo(() => {
+    const paid = filterTransactions(transactions).filter(t => t.status === 'paid' && t.clientId);
+    const map = new Map<string, { receita: number; custo: number; investimento: number }>();
+    paid.forEach(t => {
+      const curr = map.get(t.clientId!) || { receita: 0, custo: 0, investimento: 0 };
+      if (t.type === 'income') curr.receita += t.amount;
+      else if (t.type === 'cost') curr.custo += t.amount;
+      else if (t.type === 'investment') curr.investimento += t.amount;
+      map.set(t.clientId!, curr);
+    });
+    return clients
+      .map(c => {
+        const v = map.get(c.id) || { receita: 0, custo: 0, investimento: 0 };
+        const saldo = v.receita - v.custo - v.investimento;
+        return { client: c, ...v, saldo };
+      })
+      .filter(r => r.receita > 0 || r.custo > 0 || r.investimento > 0)
+      .sort((a, b) => b.saldo - a.saldo);
+  }, [transactions, clients, filterMode, filterMonth, filterStartDate, filterEndDate]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -386,6 +407,57 @@ export default function FinancialManagement({
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Briefcase className="w-4 h-4 text-indigo-300" />
+              <h3 className="text-lg font-bold text-white">Saúde por Cliente</h3>
+              <span className="text-xs text-slate-500 ml-auto">apenas pagos · período do filtro</span>
+            </div>
+            {byClient.length === 0 ? (
+              <p className="text-sm text-slate-500 py-4 text-center">
+                Nenhuma movimentação vinculada a cliente neste período. Vincule receitas/custos a um cliente ao criar a transação.
+              </p>
+            ) : (
+              <div className="overflow-x-auto -mx-2">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-[10px] uppercase font-bold tracking-widest text-slate-500 border-b border-white/5">
+                      <th className="text-left px-2 py-2">Cliente</th>
+                      <th className="text-right px-2 py-2">Receita</th>
+                      <th className="text-right px-2 py-2">Custo</th>
+                      <th className="text-right px-2 py-2">Inv.</th>
+                      <th className="text-right px-2 py-2">Saldo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {byClient.map(row => (
+                      <tr key={row.client.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
+                        <td className="px-2 py-2.5">
+                          <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: row.client.color }} />
+                            <span className="text-slate-200 font-medium">{row.client.name}</span>
+                          </span>
+                        </td>
+                        <td className="text-right px-2 py-2.5 font-mono text-emerald-300">
+                          {row.receita > 0 ? formatCurrency(row.receita) : '—'}
+                        </td>
+                        <td className="text-right px-2 py-2.5 font-mono text-rose-300">
+                          {row.custo > 0 ? formatCurrency(row.custo) : '—'}
+                        </td>
+                        <td className="text-right px-2 py-2.5 font-mono text-blue-300">
+                          {row.investimento > 0 ? formatCurrency(row.investimento) : '—'}
+                        </td>
+                        <td className={`text-right px-2 py-2.5 font-mono font-bold ${row.saldo >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {formatCurrency(row.saldo)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 
@@ -672,7 +744,7 @@ function TransactionModal({
             </button>
             <button
               type="button"
-              onClick={() => { setType('withdrawal'); setCategory('withdrawal_kallyl'); }}
+              onClick={() => { setType('withdrawal'); setCategory('withdrawal_kallyl'); setClientId(''); }}
               className={`py-2 rounded-lg text-sm font-medium transition-all ${type === 'withdrawal' ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-white'}`}
             >
               Retirada
@@ -692,10 +764,10 @@ function TransactionModal({
             </select>
           </div>
 
-          {type === 'income' && (
+          {type !== 'withdrawal' && (
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">Vincular a Cliente (Opcional)</label>
-              <select 
+              <select
                 value={clientId} onChange={(e) => setClientId(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
