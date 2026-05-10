@@ -8,6 +8,7 @@ import GlassCard from '../components/GlassCard';
 import TaskImporter from '../components/TaskImporter';
 import Timer from '../components/Timer';
 import EstimatedTimePicker from '../components/EstimatedTimePicker';
+import { toast } from '../components/Toast';
 
 const getWeekIdFromDateString = (dateStr: string) => {
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -82,7 +83,7 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
       setIsEditingClient(false);
     } catch (e) {
       console.error(e);
-      alert("Erro ao salvar cliente.");
+      toast.error('Erro ao salvar cliente');
     }
   };
 
@@ -693,8 +694,18 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                         
                         const sortedKeys = ['Backlog / Sem Data', ...weekKeys].filter(k => grouped[k] && grouped[k].length > 0);
 
+                        const priorityRank = (p?: Priority) => p === 'high' ? 0 : p === 'medium' ? 1 : p === 'low' ? 2 : 3;
+                        const sortTasks = (arr: MasterTask[]) =>
+                          [...arr].sort((a, b) => {
+                            const pr = priorityRank(a.priority) - priorityRank(b.priority);
+                            if (pr !== 0) return pr;
+                            const ad = a.dueDate || '9999-12-31';
+                            const bd = b.dueDate || '9999-12-31';
+                            return ad.localeCompare(bd);
+                          });
+
                         return sortedKeys.map(groupName => {
-                          const tasks = grouped[groupName];
+                          const tasks = sortTasks(grouped[groupName]);
                           return (
                             <div key={groupName} className="space-y-2 mb-6">
                               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-2 mb-4 flex items-center gap-2">

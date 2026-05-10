@@ -171,6 +171,20 @@ export default function FinancialManagement({
     onUpdateTransaction({ ...t, status: t.status === 'pending' ? 'paid' : 'pending' });
   };
 
+  const pendingInRange = useMemo(
+    () => filterTransactions(transactions).filter(t => t.status === 'pending'),
+    [transactions, filterMode, filterMonth, filterStartDate, filterEndDate]
+  );
+
+  const handleMarkAllPending = () => {
+    if (pendingInRange.length === 0) return;
+    const label = filterMode === 'month'
+      ? `do mês ${filterMonth}`
+      : `do período selecionado`;
+    if (!confirm(`Marcar ${pendingInRange.length} movimentação(ões) pendente(s) ${label} como pagas?`)) return;
+    pendingInRange.forEach(t => onUpdateTransaction({ ...t, status: 'paid' }));
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       
@@ -377,15 +391,27 @@ export default function FinancialManagement({
 
         {/* TRANSACTIONS LIST */}
         <div className="bg-white/5 border border-white/10 rounded-2xl flex flex-col backdrop-blur-sm h-[800px]">
-          <div className="p-5 border-b border-white/10">
-            <h3 className="text-lg font-bold text-white">Últimas Movimentações</h3>
-            <p className="text-sm text-slate-400">
-              {filterMode === 'month'
-                ? `Lançamentos de ${filterMonth}`
-                : filterStartDate || filterEndDate
-                  ? `${filterStartDate ? filterStartDate.split('-').reverse().join('/') : '...'} até ${filterEndDate ? filterEndDate.split('-').reverse().join('/') : '...'}`
-                  : 'Todos os lançamentos'}
-            </p>
+          <div className="p-5 border-b border-white/10 flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-white">Últimas Movimentações</h3>
+              <p className="text-sm text-slate-400">
+                {filterMode === 'month'
+                  ? `Lançamentos de ${filterMonth}`
+                  : filterStartDate || filterEndDate
+                    ? `${filterStartDate ? filterStartDate.split('-').reverse().join('/') : '...'} até ${filterEndDate ? filterEndDate.split('-').reverse().join('/') : '...'}`
+                    : 'Todos os lançamentos'}
+              </p>
+            </div>
+            {pendingInRange.length > 0 && (
+              <button
+                onClick={handleMarkAllPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 transition-all whitespace-nowrap"
+                title="Marcar todas as pendentes do filtro atual como pagas"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Pagar {pendingInRange.length}
+              </button>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
             {filterTransactions(transactions).map((t) => {

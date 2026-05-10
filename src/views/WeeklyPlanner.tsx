@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown, Package, Gift, Download, Clock } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown, Package, Gift, Download, Clock, Play, Sun } from 'lucide-react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember, TaskType } from '../types';
 import { exportPlannerTasksToCSV } from '../utils/exportUtils';
@@ -136,6 +136,57 @@ export default function WeeklyPlanner({
     if (taskResponsibles.length === 0) return true;
     return taskResponsibles.some(r => selectedUserFilter.includes(r));
   });
+
+  const todayWeekId = useMemo(() => {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d);
+    monday.setDate(diff);
+    return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+  }, []);
+  const isCurrentWeek = currentWeekId === todayWeekId;
+  const todayDayOfWeek: DayOfWeek = (() => {
+    const days: DayOfWeek[] = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    return days[new Date().getDay()];
+  })();
+
+  const weekSummary = useMemo(() => {
+    let estimated = 0;
+    let realized = 0;
+    let running = 0;
+    let pending = 0;
+    let done = 0;
+    filteredTasks.forEach(t => {
+      const subEst = (t.subTasks || []).reduce((s, st) => s + (st.estimatedMinutes || 0), 0);
+      estimated += t.estimatedMinutes || subEst || 0;
+      const subSpent = (t.subTasks || []).reduce((s, st) => s + (st.timeSpent || 0), 0);
+      realized += (t.timeSpent || 0) + subSpent;
+      if (t.timerStartedAt) running += 1;
+      (t.subTasks || []).forEach(st => { if (st.timerStartedAt) running += 1; });
+      if (t.completed) done += 1; else pending += 1;
+    });
+    return { estimated, realizedMin: Math.round(realized / 60000), running, pending, done, total: filteredTasks.length };
+  }, [filteredTasks]);
+
+  const todayTasks = useMemo(() => {
+    if (!isCurrentWeek) return [];
+    return filteredTasks.filter(t => t.day === todayDayOfWeek);
+  }, [filteredTasks, isCurrentWeek, todayDayOfWeek]);
+
+  const todaySummary = useMemo(() => {
+    let estimated = 0;
+    let pending = 0;
+    let running = 0;
+    todayTasks.forEach(t => {
+      const subEst = (t.subTasks || []).reduce((s, st) => s + (st.estimatedMinutes || 0), 0);
+      estimated += t.estimatedMinutes || subEst || 0;
+      if (!t.completed) pending += 1;
+      if (t.timerStartedAt) running += 1;
+      (t.subTasks || []).forEach(st => { if (st.timerStartedAt) running += 1; });
+    });
+    return { estimated, pending, running, total: todayTasks.length };
+  }, [todayTasks]);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const [year, month, day] = currentWeekId.split('-').map(Number);
@@ -376,6 +427,71 @@ export default function WeeklyPlanner({
           </div>
         </div>
       </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 -mt-4">
+        {isCurrentWeek ? (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/20">
+            <Sun className="w-5 h-5 text-amber-300 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] uppercase font-bold tracking-widest text-amber-300/80">Hoje · {todayDayOfWeek}</div>
+              <div className="text-sm text-slate-200 mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                <span><span className="font-bold text-white">{todaySummary.pending}</span> pendentes</span>
+                <span className="text-slate-500">·</span>
+                <span><span className="font-bold text-white">{todaySummary.total}</span> totais</span>
+                {todaySummary.estimated > 0 && (
+                  <>
+                    <span className="text-slate-500">·</span>
+                    <span><span className="font-bold text-indigo-300">{formatEstimated(todaySummary.estimated)}</span> est.</span>
+                  </>
+                )}
+                {todaySummary.running > 0 && (
+                  <span className="flex items-center gap-1 text-emerald-300">
+                    <Play className="w-3 h-3 fill-emerald-300" /> {todaySummary.running} rodando
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5">
+            <Calendar className="w-5 h-5 text-slate-500 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Semana selecionada</div>
+              <div className="text-sm text-slate-400 mt-0.5">Você está vendo outra semana — visão "Hoje" só aparece na semana atual.</div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5">
+          <Clock className="w-5 h-5 text-indigo-300 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase font-bold tracking-widest text-indigo-300/80">Resumo da semana</div>
+            <div className="text-sm text-slate-200 mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+              <span><span className="font-bold text-white">{weekSummary.done}/{weekSummary.total}</span> concluídas</span>
+              {weekSummary.estimated > 0 && (
+                <>
+                  <span className="text-slate-500">·</span>
+                  <span>
+                    <span className="font-bold text-indigo-300">{formatEstimated(weekSummary.estimated)}</span> est.
+                    {weekSummary.realizedMin > 0 && (
+                      <>
+                        <span className="text-slate-500"> / </span>
+                        <span className="font-bold text-emerald-300">{formatEstimated(weekSummary.realizedMin)}</span> real.
+                        <span className="text-slate-500 ml-1">({Math.round((weekSummary.realizedMin / weekSummary.estimated) * 100)}%)</span>
+                      </>
+                    )}
+                  </span>
+                </>
+              )}
+              {weekSummary.running > 0 && (
+                <span className="flex items-center gap-1 text-emerald-300">
+                  <Play className="w-3 h-3 fill-emerald-300" /> {weekSummary.running} rodando
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="flex flex-col md:flex-row gap-3 md:items-center -mt-4">
         <div className="flex items-center gap-2 flex-wrap">

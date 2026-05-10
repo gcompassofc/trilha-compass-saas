@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Client, WeeklyTask, TeamMember, FinancialTransaction } from '../types';
+import { toast } from '../components/Toast';
 
 const CLIENTS_COLLECTION = 'clients';
 const TASKS_COLLECTION = 'weeklyTasks';
@@ -24,7 +25,7 @@ const sanitize = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
 const handleError = (error: any, context: string) => {
   console.error(`Firebase Error (${context}):`, error);
-  alert(`Erro no Banco de Dados (${context}):\n${error.message}\n\nPossíveis causas:\n1. Regras do Firestore bloqueando acesso (Permission Denied)\n2. Faltando índice no Firestore (Index Required)`);
+  toast.error(`Erro: ${context}`, error?.message || 'Falha desconhecida no Firestore');
   throw error;
 };
 

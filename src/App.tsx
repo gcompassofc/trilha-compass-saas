@@ -12,6 +12,7 @@ import TeamManagement from './views/TeamManagement';
 import FinancialManagement from './views/FinancialManagement';
 import Login from './components/Login';
 import GlobalSearch from './components/GlobalSearch';
+import ToastContainer from './components/Toast';
 import { Search } from 'lucide-react';
 import { Client, WeeklyTask, DayOfWeek, TeamMember, FinancialTransaction } from './types';
 import { dbService } from './services/db';
@@ -317,7 +318,9 @@ export default function App() {
 
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <GlobalSearch 
+      <ToastContainer />
+
+      <GlobalSearch
         isOpen={isSearchOpen} 
         onClose={() => setIsSearchOpen(false)} 
         clients={clients} 

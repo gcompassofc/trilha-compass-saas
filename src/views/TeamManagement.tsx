@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { TeamMember } from '../types';
 import GlassCard from '../components/GlassCard';
 import { dbService } from '../services/db';
+import { toast } from '../components/Toast';
 
 interface TeamManagementProps {
   teamMembers: TeamMember[];
@@ -47,7 +48,7 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
       resetForm();
     } catch (error) {
       console.error("Erro ao salvar membro:", error);
-      alert("Erro ao salvar os dados do membro.");
+      toast.error('Erro ao salvar membro', 'Não foi possível salvar os dados.');
     }
   };
 
