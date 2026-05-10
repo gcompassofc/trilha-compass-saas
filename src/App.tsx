@@ -350,7 +350,7 @@ export default function App() {
               transition={{ duration: 0.3 }}
               className="flex-1 min-h-0 w-full overflow-hidden flex flex-col"
             >
-              <WeeklyPlanner 
+              <WeeklyPlanner
                 clients={clients}
                 weeklyTasks={weeklyTasks}
                 teamMembers={teamMembers}
@@ -360,6 +360,7 @@ export default function App() {
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
                 onReorderTasks={handleReorderTasks}
+                onUpdateClient={handleUpdateClient}
               />
             </motion.div>
           )}

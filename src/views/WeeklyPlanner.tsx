@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, Play, Pause, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown, Package, Gift, Download } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown, Package, Gift, Download } from 'lucide-react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember, TaskType } from '../types';
 import { exportPlannerTasksToCSV } from '../utils/exportUtils';
+import Timer from '../components/Timer';
 
 interface WeeklyPlannerProps {
   clients: Client[];
@@ -14,6 +15,7 @@ interface WeeklyPlannerProps {
   onUpdateTask: (task: WeeklyTask) => void;
   onDeleteTask: (id: string) => void;
   onReorderTasks: (day: DayOfWeek, tasks: WeeklyTask[]) => void;
+  onUpdateClient: (client: Client) => void;
 }
 
 const DAYS: DayOfWeek[] = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
@@ -33,54 +35,6 @@ const getDateForDayOfWeek = (weekId: string, targetDay: DayOfWeek): string => {
   return `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
 };
 
-
-const formatTime = (totalSeconds: number) => {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  if (h > 0) return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-};
-
-const TaskTimer = ({ task, onUpdateTask }: { task: WeeklyTask, onUpdateTask: (t: WeeklyTask) => void }) => {
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    let interval: any;
-    if (task.timerStartedAt && !task.completed) {
-      interval = setInterval(() => setNow(Date.now()), 1000);
-    }
-    return () => clearInterval(interval);
-  }, [task.timerStartedAt, task.completed]);
-
-  const isRunning = !!task.timerStartedAt && !task.completed;
-  const baseTime = task.timeSpent || 0;
-  const elapsed = isRunning && task.timerStartedAt ? Math.floor((now - task.timerStartedAt) / 1000) : 0;
-  const totalSeconds = baseTime + elapsed;
-
-  const toggleTimer = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (task.completed) return; // cannot start timer for completed task
-    
-    if (isRunning) {
-      // Stop
-      onUpdateTask({ ...task, timerStartedAt: null, timeSpent: totalSeconds });
-    } else {
-      // Start
-      onUpdateTask({ ...task, timerStartedAt: Date.now() });
-    }
-  };
-
-  return (
-    <button 
-      onClick={toggleTimer}
-      className={`flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-mono transition-all ${isRunning ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300 hover:bg-white/10'}`}
-    >
-      {isRunning ? <Pause className="w-2.5 h-2.5" fill="currentColor" /> : <Play className="w-2.5 h-2.5" fill="currentColor" />}
-      <span>{formatTime(totalSeconds)}</span>
-    </button>
-  );
-};
 
 const DraggableWrapper = ({ task, className, style, children }: any) => {
   const controls = useDragControls();
@@ -110,16 +64,17 @@ const DraggableWrapper = ({ task, className, style, children }: any) => {
   );
 };
 
-export default function WeeklyPlanner({ 
-clients, 
-  weeklyTasks, 
+export default function WeeklyPlanner({
+  clients,
+  weeklyTasks,
   teamMembers,
   currentWeekId,
   setCurrentWeekId,
-  onAddTask, 
-  onUpdateTask, 
-  onDeleteTask, 
-  onReorderTasks 
+  onAddTask,
+  onUpdateTask,
+  onDeleteTask,
+  onReorderTasks,
+  onUpdateClient,
 }: WeeklyPlannerProps) {
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>(() => {
     const saved = localStorage.getItem('planner_view_mode');
@@ -128,6 +83,7 @@ clients,
   const [addingTaskForDay, setAddingTaskForDay] = useState<DayOfWeek | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('standalone');
+  const [addTab, setAddTab] = useState<'backlog' | 'new'>('backlog');
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [newSubTaskTitles, setNewSubTaskTitles] = useState<Record<string, string>>({});
   const [newCommentTexts, setNewCommentTexts] = useState<Record<string, string>>({});
@@ -212,6 +168,58 @@ clients,
     setNewTaskType('scope');
     setSelectedClientId('standalone');
     setAddingTaskForDay(null);
+    setAddTab('backlog');
+  };
+
+  const generateId = () =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+  const handleAddNewTaskForClient = (day: DayOfWeek) => {
+    if (!newTaskTitle.trim() || selectedClientId === 'standalone') return;
+    const client = clients.find(c => c.id === selectedClientId);
+    if (!client) return;
+
+    const masterTaskId = generateId();
+    const newMasterTask: MasterTask = {
+      id: masterTaskId,
+      title: newTaskTitle.trim(),
+      completed: false,
+      priority: 'medium',
+      taskType: newTaskType,
+      responsible: newTaskResponsibles[0],
+      responsibles: newTaskResponsibles,
+      subTasks: [],
+    };
+    onUpdateClient({
+      ...client,
+      masterTasks: [...(client.masterTasks || []), newMasterTask],
+    });
+
+    const targetDate = getDateForDayOfWeek(currentWeekId, day);
+    onAddTask({
+      weekId: currentWeekId,
+      day,
+      dueDate: targetDate,
+      title: newTaskTitle.trim(),
+      clientId: selectedClientId,
+      masterTaskId,
+      completed: false,
+      order: weeklyTasks.filter(t => t.day === day).length,
+      subTasks: [],
+      responsible: newTaskResponsibles[0],
+      responsibles: newTaskResponsibles,
+      taskType: newTaskType,
+      priority: 'medium',
+    });
+
+    setNewTaskTitle('');
+    setNewTaskResponsibles([]);
+    setNewTaskType('scope');
+    setSelectedClientId('standalone');
+    setAddingTaskForDay(null);
+    setAddTab('backlog');
   };
 
   const toggleTask = (task: WeeklyTask) => {
@@ -783,7 +791,7 @@ clients,
                                         })}
                                       </div>
 
-                                      <TaskTimer task={task} onUpdateTask={onUpdateTask} />
+                                      <Timer item={task} onChange={onUpdateTask} size="sm" />
                                     </div>
 
                                     {/* Responsáveis */}
@@ -859,6 +867,13 @@ clients,
                                               <span className={`text-[12px] flex-1 ${st.completed ? 'text-slate-600 line-through' : 'text-slate-300'}`}>
                                                 {st.title}
                                               </span>
+                                              <Timer
+                                                item={st}
+                                                onChange={(updated) => {
+                                                  const newSubs = (task.subTasks || []).map(s => s.id === st.id ? updated : s);
+                                                  onUpdateTask({ ...task, subTasks: newSubs });
+                                                }}
+                                              />
                                               <button onClick={() => removeSubTask(task, st.id)} className="opacity-0 group-hover/st:opacity-100 p-1 text-slate-600 hover:text-rose-500"><X className="w-3 h-3" /></button>
                                             </div>
                                           ))}
@@ -960,61 +975,83 @@ clients,
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Nova Demanda</span>
-                          <button onClick={() => { setAddingTaskForDay(null); setSelectedClientId('standalone'); setNewTaskTitle(''); }}><X className="w-4 h-4 text-slate-500" /></button>
+                          <button onClick={() => { setAddingTaskForDay(null); setSelectedClientId('standalone'); setNewTaskTitle(''); setAddTab('backlog'); }}><X className="w-4 h-4 text-slate-500" /></button>
                         </div>
 
                         <select
                           value={selectedClientId}
-                          onChange={(e) => setSelectedClientId(e.target.value)}
+                          onChange={(e) => { setSelectedClientId(e.target.value); setAddTab('backlog'); }}
                           className={`w-full border rounded-xl px-3 py-2 text-xs font-bold transition-all focus:outline-none focus:ring-2 appearance-none ${
-                            selectedClientId === 'standalone' 
-                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-500 focus:ring-amber-500/20' 
+                            selectedClientId === 'standalone'
+                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-500 focus:ring-amber-500/20'
                               : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400 focus:ring-indigo-500/20'
                           }`}
                         >
-                          <option value="standalone">⚡ Demanda Pontual (Extra)</option>
+                          <option value="standalone">⚡ Demanda Pontual (Sem Cliente)</option>
                           {clients.map(c => (
                             <option key={c.id} value={c.id}>📁 Cliente: {c.name}</option>
                           ))}
                         </select>
 
-
-                        {selectedClientId !== 'standalone' ? (
-                          <div className="space-y-2">
-                             <div className="flex items-center gap-2 mb-1">
-                                <Search className="w-3 h-3 text-slate-500" />
-                                <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Backlog Pendente</span>
-                             </div>
-                             <div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-                               {selectedClientBacklog.map(t => (
-                                 <button
-                                   key={t.id}
-                                   onClick={() => handleAddTask(day, t)}
-                                   className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-indigo-500/20 text-xs text-slate-400 hover:text-white transition-all transition-colors border border-transparent hover:border-indigo-500/30 flex justify-between items-center group/btn"
-                                 >
-                                   <div className="flex flex-col">
-                                     <span className="truncate pr-2 font-medium">{t.title}</span>
-                                     {t.responsible && <span className="text-[8px] text-slate-500">Resp: {teamMembers.find(m => m.id === t.responsible || m.name === t.responsible)?.name || t.responsible}</span>}
-                                   </div>
-                                   <Plus className="w-3 h-3 opacity-0 group-hover/btn:opacity-100" />
-                                 </button>
-                               ))}
-                               {selectedClientBacklog.length === 0 && (
-                                 <p className="text-[10px] text-slate-600 text-center py-2 italic">Backlog vazio ou já planejado.</p>
-                               )}
-                             </div>
+                        {selectedClientId !== 'standalone' && (
+                          <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
+                            <button
+                              type="button"
+                              onClick={() => setAddTab('backlog')}
+                              className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-[9px] uppercase font-bold transition-all ${addTab === 'backlog' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                            >
+                              <Search className="w-3 h-3" /> Do Backlog
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAddTab('new')}
+                              className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-[9px] uppercase font-bold transition-all ${addTab === 'new' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                            >
+                              <Plus className="w-3 h-3" /> Nova Demanda
+                            </button>
                           </div>
-                        ) : (
+                        )}
+
+                        {selectedClientId !== 'standalone' && addTab === 'backlog' && (
+                          <div className="space-y-2">
+                            <div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                              {selectedClientBacklog.map(t => (
+                                <button
+                                  key={t.id}
+                                  onClick={() => handleAddTask(day, t)}
+                                  className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-indigo-500/20 text-xs text-slate-400 hover:text-white transition-all border border-transparent hover:border-indigo-500/30 flex justify-between items-center group/btn"
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="truncate pr-2 font-medium">{t.title}</span>
+                                    {t.responsible && <span className="text-[8px] text-slate-500">Resp: {teamMembers.find(m => m.id === t.responsible || m.name === t.responsible)?.name || t.responsible}</span>}
+                                  </div>
+                                  <Plus className="w-3 h-3 opacity-0 group-hover/btn:opacity-100" />
+                                </button>
+                              ))}
+                              {selectedClientBacklog.length === 0 && (
+                                <p className="text-[10px] text-slate-600 text-center py-2 italic">Backlog vazio ou já planejado.</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {(selectedClientId === 'standalone' || addTab === 'new') && (
                           <div className="space-y-4">
                             <textarea
                               autoFocus
                               placeholder="Descreva a demanda..."
                               value={newTaskTitle}
                               onChange={(e) => setNewTaskTitle(e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleAddTask(day)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  if (selectedClientId === 'standalone') handleAddTask(day);
+                                  else handleAddNewTaskForClient(day);
+                                }
+                              }}
                               className="w-full bg-slate-900/50 border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 min-h-[60px]"
                             />
-                            
+
                             <div className="space-y-1.5">
                               <label className="text-[9px] font-bold text-slate-500 uppercase">Responsáveis</label>
                               <div className="flex flex-wrap gap-1 p-1 bg-black/20 rounded-lg border border-white/5">
@@ -1025,7 +1062,7 @@ clients,
                                       key={m.id}
                                       type="button"
                                       onClick={() => {
-                                        setNewTaskResponsibles(prev => 
+                                        setNewTaskResponsibles(prev =>
                                           isSelected ? prev.filter(id => id !== m.id) : [...prev, m.id]
                                         );
                                       }}
@@ -1057,17 +1094,25 @@ clients,
                                 </button>
                               </div>
                             </div>
-                          </div>
-                        )}
 
-                        {selectedClientId === 'standalone' && (
-                          <button 
-                            onClick={() => handleAddTask(day)}
-                            disabled={!newTaskTitle.trim()}
-                            className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:hover:bg-amber-600 text-white py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-amber-600/20"
-                          >
-                            Agendar Demanda Pontual
-                          </button>
+                            {selectedClientId === 'standalone' ? (
+                              <button
+                                onClick={() => handleAddTask(day)}
+                                disabled={!newTaskTitle.trim()}
+                                className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:hover:bg-amber-600 text-white py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-amber-600/20"
+                              >
+                                Agendar Demanda Pontual
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleAddNewTaskForClient(day)}
+                                disabled={!newTaskTitle.trim()}
+                                className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-600/20"
+                              >
+                                Criar e Agendar no Backlog
+                              </button>
+                            )}
+                          </div>
                         )}
 
                       </motion.div>

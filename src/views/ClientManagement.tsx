@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Client, MasterTask, Priority, SubTask, TeamMember, WeeklyTask, DayOfWeek, TaskType } from '../types';
 import GlassCard from '../components/GlassCard';
 import TaskImporter from '../components/TaskImporter';
+import Timer from '../components/Timer';
 
 const getWeekIdFromDateString = (dateStr: string) => {
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -224,6 +225,28 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
       ...client,
       masterTasks: client.masterTasks.map(t => 
         t.id === task.id ? { ...t, subTasks: newSubTasks } : t
+      ),
+    });
+  };
+
+  const updateMasterTask = (clientId: string, updated: MasterTask) => {
+    const client = clients.find(c => c.id === clientId);
+    if (!client) return;
+    onUpdateClient({
+      ...client,
+      masterTasks: client.masterTasks.map(t => (t.id === updated.id ? updated : t)),
+    });
+  };
+
+  const updateSubTaskInMaster = (clientId: string, masterTaskId: string, updatedSub: SubTask) => {
+    const client = clients.find(c => c.id === clientId);
+    if (!client) return;
+    onUpdateClient({
+      ...client,
+      masterTasks: client.masterTasks.map(t =>
+        t.id === masterTaskId
+          ? { ...t, subTasks: (t.subTasks || []).map(st => (st.id === updatedSub.id ? updatedSub : st)) }
+          : t
       ),
     });
   };
@@ -757,6 +780,7 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                         📅 {task.dueDate.split('-').reverse().join('/')}
                                       </span>
                                     )}
+                                    <Timer item={task} onChange={(updated) => updateMasterTask(selectedClient.id, updated)} />
                                   </div>
 
                                   <AnimatePresence>
@@ -860,6 +884,7 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                                   </button>
                                                 </div>
                                                 <span className="flex-1">{st.title}</span>
+                                                <Timer item={st} onChange={(updated) => updateSubTaskInMaster(selectedClient.id, task.id, updated)} />
                                                 <button onClick={() => removeSubTaskFromExisting(selectedClient.id, task, st.id)} className="opacity-0 group-hover/st:opacity-100 p-0.5 text-slate-600 hover:text-rose-500"><X className="w-3 h-3" /></button>
                                               </div>
                                             ))}

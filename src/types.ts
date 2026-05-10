@@ -6,6 +6,8 @@ export interface SubTask {
   id: string;
   title: string;
   completed: boolean;
+  timeSpent?: number;
+  timerStartedAt?: number | null;
 }
 
 export interface TaskComment {
@@ -28,6 +30,8 @@ export interface MasterTask {
   comments?: TaskComment[];
   taskType?: TaskType;
   responsibles?: string[];
+  timeSpent?: number;
+  timerStartedAt?: number | null;
 }
 
 export interface Client {
