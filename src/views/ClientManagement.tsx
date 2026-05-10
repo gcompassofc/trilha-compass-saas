@@ -7,6 +7,7 @@ import { Client, MasterTask, Priority, SubTask, TeamMember, WeeklyTask, DayOfWee
 import GlassCard from '../components/GlassCard';
 import TaskImporter from '../components/TaskImporter';
 import Timer from '../components/Timer';
+import EstimatedTimePicker from '../components/EstimatedTimePicker';
 
 const getWeekIdFromDateString = (dateStr: string) => {
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -781,6 +782,10 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                       </span>
                                     )}
                                     <Timer item={task} onChange={(updated) => updateMasterTask(selectedClient.id, updated)} />
+                                    <EstimatedTimePicker
+                                      value={task.estimatedMinutes}
+                                      onChange={(v) => updateMasterTask(selectedClient.id, { ...task, estimatedMinutes: v })}
+                                    />
                                   </div>
 
                                   <AnimatePresence>
@@ -885,6 +890,10 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                                 </div>
                                                 <span className="flex-1">{st.title}</span>
                                                 <Timer item={st} onChange={(updated) => updateSubTaskInMaster(selectedClient.id, task.id, updated)} />
+                                                <EstimatedTimePicker
+                                                  value={st.estimatedMinutes}
+                                                  onChange={(v) => updateSubTaskInMaster(selectedClient.id, task.id, { ...st, estimatedMinutes: v })}
+                                                />
                                                 <button onClick={() => removeSubTaskFromExisting(selectedClient.id, task, st.id)} className="opacity-0 group-hover/st:opacity-100 p-0.5 text-slate-600 hover:text-rose-500"><X className="w-3 h-3" /></button>
                                               </div>
                                             ))}

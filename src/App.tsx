@@ -184,18 +184,19 @@ export default function App() {
                    responsibles: newMt.responsibles,
                    taskType: newMt.taskType,
                    comments: newMt.comments,
-                   dueDate: newMt.dueDate
+                   dueDate: newMt.dueDate,
+                   estimatedMinutes: newMt.estimatedMinutes
                 };
-                
+
                 if (newMt.dueDate && oldMt.dueDate !== newMt.dueDate) {
                    wtUpdated.weekId = getWeekIdFromDateString(newMt.dueDate);
                    wtUpdated.day = getDayOfWeekFromDateString(newMt.dueDate);
                 }
-                
+
                 if (!wtUpdated.masterTaskId) {
                    wtUpdated.masterTaskId = newMt.id;
                 }
-                
+
                 updateDoc(docSnap.ref, JSON.parse(JSON.stringify(wtUpdated)));
               });
           } else {
@@ -210,7 +211,8 @@ export default function App() {
                  responsibles: newMt.responsibles,
                  taskType: newMt.taskType,
                  comments: newMt.comments,
-                 dueDate: newMt.dueDate
+                 dueDate: newMt.dueDate,
+                 estimatedMinutes: newMt.estimatedMinutes
               };
               
               if (newMt.dueDate && oldMt.dueDate !== newMt.dueDate) {
@@ -257,8 +259,8 @@ export default function App() {
           const updatedMasterTasks = [...client.masterTasks];
           const mt = updatedMasterTasks[mtIndex];
           
-          updatedMasterTasks[mtIndex] = { 
-            ...mt, 
+          updatedMasterTasks[mtIndex] = {
+            ...mt,
             title: updated.title,
             completed: updated.completed,
             subTasks: updated.subTasks,
@@ -266,7 +268,8 @@ export default function App() {
             responsibles: updated.responsibles,
             taskType: updated.taskType,
             comments: updated.comments,
-            dueDate: updated.dueDate
+            dueDate: updated.dueDate,
+            estimatedMinutes: updated.estimatedMinutes
           };
 
           if (!updated.masterTaskId) {

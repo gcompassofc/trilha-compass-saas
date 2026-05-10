@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown, Package, Gift, Download } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown, Package, Gift, Download, Clock, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember, TaskType } from '../types';
 import { exportPlannerTasksToCSV } from '../utils/exportUtils';
 import Timer from '../components/Timer';
+import EstimatedTimePicker, { formatEstimated } from '../components/EstimatedTimePicker';
+import CalendarEventsBlock from '../components/CalendarEventsBlock';
+import { useGoogleCalendar } from '../hooks/useGoogleCalendar';
 
 interface WeeklyPlannerProps {
   clients: Client[];
@@ -94,6 +97,20 @@ export default function WeeklyPlanner({
   useEffect(() => {
     localStorage.setItem('planner_view_mode', viewMode);
   }, [viewMode]);
+
+  const { events: calendarEvents, loading: calendarLoading, needsReconnect: calendarNeedsReconnect, reconnect: reconnectCalendar } = useGoogleCalendar(currentWeekId);
+
+  const eventsByDay = (day: DayOfWeek): typeof calendarEvents => {
+    const target = getDateForDayOfWeek(currentWeekId, day);
+    return calendarEvents.filter(e => {
+      // All-day events: e.start is "YYYY-MM-DD"
+      if (e.allDay) return e.start.substring(0, 10) === target;
+      // Timed events: convert ISO datetime to local YYYY-MM-DD
+      const d = new Date(e.start);
+      const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return local === target;
+    });
+  };
 
   const [selectedUserFilter, setSelectedUserFilter] = useState<string[]>(() => {
     try {
@@ -342,6 +359,22 @@ export default function WeeklyPlanner({
             <Download className="w-4 h-4" />
             <span className="text-sm font-bold">Exportar Planilha</span>
           </button>
+
+          {calendarNeedsReconnect && (
+            <button
+              onClick={reconnectCalendar}
+              className="hidden md:flex items-center gap-2 px-3 py-2 bg-sky-500/10 text-sky-400 hover:bg-sky-500 hover:text-white rounded-xl transition-all border border-sky-500/20 shadow-sm self-start mt-2"
+              title="Conectar / reconectar com Google Calendar"
+            >
+              <Calendar className="w-4 h-4" />
+              <span className="text-xs font-bold">Conectar Google Calendar</span>
+            </button>
+          )}
+          {!calendarNeedsReconnect && calendarLoading && (
+            <span className="hidden md:flex items-center gap-1.5 text-[10px] text-sky-400/60 self-start mt-2 px-3 py-2">
+              <RefreshCw className="w-3 h-3 animate-spin" /> Sincronizando agenda…
+            </span>
+          )}
         </div>
         <div className="flex gap-3 items-center bg-white/5 border border-white/5 px-3 py-2 rounded-2xl">
           <div className="flex bg-black/20 rounded-lg p-1 border border-white/5">
@@ -488,6 +521,7 @@ export default function WeeklyPlanner({
                 </div>
 
                 <div className={`flex flex-col transition-colors ${viewMode === 'kanban' ? 'glass-panel p-3 gap-3 flex-1 min-h-[150px] min-h-0 overflow-hidden' : 'gap-0.5'} ${viewMode === 'kanban' && isToday ? 'border-indigo-500/20 bg-indigo-500/[0.03]' : ''} ${viewMode === 'list' && isToday ? 'border-l-2 border-indigo-500/40 pl-3 -ml-3' : ''}`}>
+                  <CalendarEventsBlock events={eventsByDay(day)} viewMode={viewMode} />
                   <Reorder.Group
                     axis="y"
                     values={dayTasks}
@@ -579,6 +613,23 @@ export default function WeeklyPlanner({
                                       </span>
                                     </>
                                   )}
+
+                                  {!!task.estimatedMinutes && (
+                                    <>
+                                      <span className="text-white/20 text-[8px]">•</span>
+                                      <span className="text-[8px] font-bold text-indigo-300 flex items-center gap-0.5" title={`Estimado: ${formatEstimated(task.estimatedMinutes)}`}>
+                                        <Clock className="w-2 h-2" /> {formatEstimated(task.estimatedMinutes)}
+                                      </span>
+                                    </>
+                                  )}
+
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setExpandedTaskId(isExpanded ? null : task.id); }}
+                                    className="ml-auto p-0.5 text-slate-500 hover:text-indigo-400 transition-colors"
+                                    title={isExpanded ? 'Recolher' : 'Expandir detalhes'}
+                                  >
+                                    {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                  </button>
                                 </div>
 
                                 <div className="flex items-start gap-1.5">
@@ -682,6 +733,11 @@ export default function WeeklyPlanner({
                                       <MessageSquare className="w-3 h-3" /> {task.comments?.length}
                                     </span>
                                   )}
+                                  {!!task.estimatedMinutes && !isExpanded && (
+                                    <span className="text-[10px] text-indigo-300/80 flex items-center gap-1 font-mono" title={`Estimado: ${formatEstimated(task.estimatedMinutes)}`}>
+                                      <Clock className="w-3 h-3" /> {formatEstimated(task.estimatedMinutes)}
+                                    </span>
+                                  )}
 
                                   {(() => {
                                     const currentResps = task.responsibles || (task.responsible ? [task.responsible] : []);
@@ -706,6 +762,14 @@ export default function WeeklyPlanner({
                                       </div>
                                     );
                                   })()}
+
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setExpandedTaskId(isExpanded ? null : task.id); }}
+                                    className="p-1 text-slate-500 hover:text-indigo-400 transition-colors"
+                                    title={isExpanded ? 'Recolher' : 'Expandir detalhes'}
+                                  >
+                                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                  </button>
 
                                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <div className="relative group/move">
@@ -792,6 +856,11 @@ export default function WeeklyPlanner({
                                       </div>
 
                                       <Timer item={task} onChange={onUpdateTask} size="sm" />
+                                      <EstimatedTimePicker
+                                        value={task.estimatedMinutes}
+                                        onChange={(v) => onUpdateTask({ ...task, estimatedMinutes: v })}
+                                        size="sm"
+                                      />
                                     </div>
 
                                     {/* Responsáveis */}
@@ -871,6 +940,13 @@ export default function WeeklyPlanner({
                                                 item={st}
                                                 onChange={(updated) => {
                                                   const newSubs = (task.subTasks || []).map(s => s.id === st.id ? updated : s);
+                                                  onUpdateTask({ ...task, subTasks: newSubs });
+                                                }}
+                                              />
+                                              <EstimatedTimePicker
+                                                value={st.estimatedMinutes}
+                                                onChange={(v) => {
+                                                  const newSubs = (task.subTasks || []).map(s => s.id === st.id ? { ...s, estimatedMinutes: v } : s);
                                                   onUpdateTask({ ...task, subTasks: newSubs });
                                                 }}
                                               />

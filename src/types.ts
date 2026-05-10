@@ -8,6 +8,7 @@ export interface SubTask {
   completed: boolean;
   timeSpent?: number;
   timerStartedAt?: number | null;
+  estimatedMinutes?: number;
 }
 
 export interface TaskComment {
@@ -32,6 +33,7 @@ export interface MasterTask {
   responsibles?: string[];
   timeSpent?: number;
   timerStartedAt?: number | null;
+  estimatedMinutes?: number;
 }
 
 export interface Client {
@@ -63,6 +65,7 @@ export interface WeeklyTask {
   timerStartedAt?: number | null; // Timestamp when timer started, null if stopped
   taskType?: TaskType;
   responsibles?: string[];
+  estimatedMinutes?: number;
 }
 
 export interface TeamMember {
