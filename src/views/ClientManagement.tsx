@@ -9,22 +9,7 @@ import TaskImporter from '../components/TaskImporter';
 import Timer from '../components/Timer';
 import EstimatedTimePicker from '../components/EstimatedTimePicker';
 import { toast } from '../components/Toast';
-
-const getWeekIdFromDateString = (dateStr: string) => {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const d = new Date(year, month - 1, day);
-  const dayOfWeekNum = d.getDay();
-  const diff = d.getDate() - dayOfWeekNum + (dayOfWeekNum === 0 ? -6 : 1);
-  const monday = new Date(d.setDate(diff));
-  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
-};
-
-const getDayOfWeekFromDateString = (dateStr: string): DayOfWeek => {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const d = new Date(year, month - 1, day);
-  const days: DayOfWeek[] = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-  return days[d.getDay()];
-};
+import { getWeekIdFromDateString, getDayOfWeekFromDateString } from '../utils/dateUtils';
 
 interface ClientManagementProps {
   clients: Client[];

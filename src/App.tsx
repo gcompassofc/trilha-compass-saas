@@ -19,26 +19,7 @@ import { dbService } from './services/db';
 import { auth, db } from './firebase/config';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, query, where, updateDoc } from 'firebase/firestore';
-
-const getWeekId = (date: Date) => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d.setDate(diff));
-  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
-};
-
-const getWeekIdFromDateString = (dateStr: string) => {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return getWeekId(new Date(year, month - 1, day));
-};
-
-const getDayOfWeekFromDateString = (dateStr: string): DayOfWeek => {
-  const days: DayOfWeek[] = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const d = new Date(year, month - 1, day);
-  return days[d.getDay()];
-};
+import { getWeekId, getWeekIdFromDateString, getDayOfWeekFromDateString } from './utils/dateUtils';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);

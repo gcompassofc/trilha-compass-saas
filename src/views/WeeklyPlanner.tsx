@@ -5,6 +5,7 @@ import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember, TaskTyp
 import { exportPlannerTasksToCSV } from '../utils/exportUtils';
 import Timer from '../components/Timer';
 import EstimatedTimePicker, { formatEstimated } from '../components/EstimatedTimePicker';
+import { getDateForDayOfWeek } from '../utils/dateUtils';
 
 interface WeeklyPlannerProps {
   clients: Client[];
@@ -20,21 +21,6 @@ interface WeeklyPlannerProps {
 }
 
 const DAYS: DayOfWeek[] = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-
-const getDateForDayOfWeek = (weekId: string, targetDay: DayOfWeek): string => {
-  const days: DayOfWeek[] = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-  const [year, month, day] = weekId.split('-').map(Number);
-  const monday = new Date(year, month - 1, day);
-  
-  const targetIndex = days.indexOf(targetDay);
-  let offset = targetIndex - 1; 
-  if (targetIndex === 0) offset = 6; 
-  
-  const targetDate = new Date(monday);
-  targetDate.setDate(monday.getDate() + offset);
-  
-  return `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
-};
 
 
 const DraggableWrapper = ({ task, className, style, children }: any) => {
