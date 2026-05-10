@@ -208,13 +208,17 @@ export default function WeeklyPlanner({
         bump('__unassigned__', 'Sem responsável', t);
         return;
       }
-      responsibles.forEach(name => bump(name, name, t));
+      responsibles.forEach(idOrName => {
+        const member = teamMembers.find(m => m.id === idOrName);
+        const name = member?.name || idOrName;
+        bump(idOrName, name, t);
+      });
     });
     return Array.from(map.values()).sort((a, b) => {
       if (b.estimated !== a.estimated) return b.estimated - a.estimated;
       return b.total - a.total;
     });
-  }, [filteredTasks]);
+  }, [filteredTasks, teamMembers]);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const [year, month, day] = currentWeekId.split('-').map(Number);
