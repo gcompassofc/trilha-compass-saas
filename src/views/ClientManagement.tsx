@@ -5,6 +5,7 @@ import { exportClientTasksToCSV } from '../utils/exportUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Client, MasterTask, Priority, SubTask, TeamMember, WeeklyTask, DayOfWeek, TaskType } from '../types';
 import GlassCard from '../components/GlassCard';
+import TaskImporter from '../components/TaskImporter';
 
 const getWeekIdFromDateString = (dateStr: string) => {
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -53,6 +54,7 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
   const [editClientName, setEditClientName] = useState('');
   const [editClientColor, setEditClientColor] = useState('');
   const [editClientLogoUrl, setEditClientLogoUrl] = useState('');
+  const [isImporterOpen, setIsImporterOpen] = useState(false);
 
   const handleEditClientToggle = (client: Client) => {
     if (isEditingClient && selectedClientId === client.id) {
@@ -284,14 +286,31 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
           <h1 className="text-2xl md:text-4xl font-bold prisma-text">Gestão de Clientes</h1>
           <p className="text-slate-400 font-light">Organize o backlog de demandas por projeto e as prioridades de cada cliente.</p>
         </div>
-        <button 
-          onClick={() => exportClientTasksToCSV(clients, teamMembers)}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-xl transition-all border border-emerald-500/20 shadow-sm"
-        >
-          <Download className="w-4 h-4" />
-          <span className="text-sm font-bold">Exportar Planilha</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsImporterOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white rounded-xl transition-all border border-indigo-500/20 shadow-sm"
+          >
+            <Upload className="w-4 h-4" />
+            <span className="text-sm font-bold">Importar Texto</span>
+          </button>
+          <button
+            onClick={() => exportClientTasksToCSV(clients, teamMembers)}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-xl transition-all border border-emerald-500/20 shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+            <span className="text-sm font-bold">Exportar Planilha</span>
+          </button>
+        </div>
       </header>
+
+      <TaskImporter
+        open={isImporterOpen}
+        onClose={() => setIsImporterOpen(false)}
+        clients={clients}
+        teamMembers={teamMembers}
+        onUpdateClient={onUpdateClient}
+      />
 
       {!selectedClientId ? (
         <div className="space-y-6">
