@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, User2, Calendar, CheckSquare, Square, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown, Package, Gift, Download, Clock, Play, Sun } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Trash2, Search, X, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, User2, Users, Calendar, CheckSquare, Square, LayoutList, LayoutGrid, ListTodo, MessageSquare, GripVertical, ArrowUp, ArrowDown, Package, Gift, Download, Clock, Play, Sun } from 'lucide-react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import { Client, WeeklyTask, DayOfWeek, MasterTask, SubTask, TeamMember, TaskType } from '../types';
 import { exportPlannerTasksToCSV } from '../utils/exportUtils';
@@ -187,6 +187,34 @@ export default function WeeklyPlanner({
     });
     return { estimated, pending, running, total: todayTasks.length };
   }, [todayTasks]);
+
+  const workloadByMember = useMemo(() => {
+    const map = new Map<string, { name: string; total: number; pending: number; estimated: number }>();
+    const bump = (key: string, name: string, t: WeeklyTask) => {
+      const subEst = (t.subTasks || []).reduce((s, st) => s + (st.estimatedMinutes || 0), 0);
+      const est = t.estimatedMinutes || subEst || 0;
+      const existing = map.get(key) || { name, total: 0, pending: 0, estimated: 0 };
+      existing.total += 1;
+      if (!t.completed) existing.pending += 1;
+      existing.estimated += est;
+      map.set(key, existing);
+    };
+    filteredTasks.forEach(t => {
+      const responsibles = [
+        ...(t.responsibles || []),
+        ...(t.responsible && !(t.responsibles || []).includes(t.responsible) ? [t.responsible] : [])
+      ];
+      if (responsibles.length === 0) {
+        bump('__unassigned__', 'Sem responsável', t);
+        return;
+      }
+      responsibles.forEach(name => bump(name, name, t));
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.estimated !== a.estimated) return b.estimated - a.estimated;
+      return b.total - a.total;
+    });
+  }, [filteredTasks]);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const [year, month, day] = currentWeekId.split('-').map(Number);
@@ -428,7 +456,7 @@ export default function WeeklyPlanner({
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 -mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 -mt-4">
         {isCurrentWeek ? (
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/20">
             <Sun className="w-5 h-5 text-amber-300 flex-shrink-0" />
@@ -489,6 +517,28 @@ export default function WeeklyPlanner({
                 </span>
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5 md:col-span-2 lg:col-span-1">
+          <Users className="w-5 h-5 text-sky-300 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase font-bold tracking-widest text-sky-300/80">Carga por pessoa</div>
+            {workloadByMember.length === 0 ? (
+              <div className="text-sm text-slate-500 mt-0.5">Sem tarefas nesta semana.</div>
+            ) : (
+              <div className="text-sm text-slate-200 mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                {workloadByMember.map(m => (
+                  <span key={m.name} className="flex items-center gap-1">
+                    <span className="font-bold text-white">{m.name}:</span>
+                    <span>{m.pending}/{m.total}</span>
+                    {m.estimated > 0 && (
+                      <span className="text-indigo-300">· {formatEstimated(m.estimated)}</span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
