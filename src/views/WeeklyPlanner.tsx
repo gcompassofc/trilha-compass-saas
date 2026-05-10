@@ -6,6 +6,7 @@ import { exportPlannerTasksToCSV } from '../utils/exportUtils';
 import Timer from '../components/Timer';
 import EstimatedTimePicker, { formatEstimated } from '../components/EstimatedTimePicker';
 import { getDateForDayOfWeek } from '../utils/dateUtils';
+import { usePlannerFilters } from '../hooks/usePlannerFilters';
 
 interface WeeklyPlannerProps {
   clients: Client[];
@@ -82,46 +83,13 @@ export default function WeeklyPlanner({
     localStorage.setItem('planner_view_mode', viewMode);
   }, [viewMode]);
 
-  const [selectedUserFilter, setSelectedUserFilter] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('planner_user_filter') || '[]');
-    } catch {
-      return [];
-    }
-  });
-
-  const [selectedClientFilter, setSelectedClientFilter] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('planner_client_filter') || '[]');
-    } catch {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('planner_user_filter', JSON.stringify(selectedUserFilter));
-  }, [selectedUserFilter]);
-
-  useEffect(() => {
-    localStorage.setItem('planner_client_filter', JSON.stringify(selectedClientFilter));
-  }, [selectedClientFilter]);
-
-  const filteredTasks = weeklyTasks.filter(task => {
-    if (selectedClientFilter.length > 0) {
-      const matchesClient = task.clientId
-        ? selectedClientFilter.includes(task.clientId)
-        : selectedClientFilter.includes('standalone');
-      if (!matchesClient) return false;
-    }
-
-    if (selectedUserFilter.length === 0) return true;
-    const taskResponsibles = [
-      ...(task.responsibles || []),
-      ...(task.responsible && !(task.responsibles || []).includes(task.responsible) ? [task.responsible] : [])
-    ];
-    if (taskResponsibles.length === 0) return true;
-    return taskResponsibles.some(r => selectedUserFilter.includes(r));
-  });
+  const {
+    selectedUserFilter,
+    setSelectedUserFilter,
+    selectedClientFilter,
+    setSelectedClientFilter,
+    filteredTasks,
+  } = usePlannerFilters(weeklyTasks);
 
   const todayWeekId = useMemo(() => {
     const d = new Date();
