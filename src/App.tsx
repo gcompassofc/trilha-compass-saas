@@ -148,6 +148,20 @@ export default function App() {
           const q = query(collection(db, 'weeklyTasks'), where('masterTaskId', '==', newMt.id));
           let snapshot = await getDocs(q);
 
+          // Se a data foi REMOVIDA na aba de clientes, remover a WT vinculada do planejador.
+          if (oldMt.dueDate && !newMt.dueDate) {
+            if (!snapshot.empty) {
+              snapshot.forEach(docSnap => dbService.deleteTask(docSnap.id));
+            } else {
+              const qFallback = query(collection(db, 'weeklyTasks'), where('clientId', '==', updated.id));
+              const snapshotFallback = await getDocs(qFallback);
+              snapshotFallback.docs
+                .filter(d => d.data().title === oldMt.title)
+                .forEach(docSnap => dbService.deleteTask(docSnap.id));
+            }
+            return;
+          }
+
           // Fallback para tarefas antigas (legadas) sem masterTaskId
           if (snapshot.empty) {
             const qFallback = query(collection(db, 'weeklyTasks'), where('clientId', '==', updated.id));
