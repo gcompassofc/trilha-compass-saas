@@ -64,10 +64,21 @@ export default function WeeklyPlanner({
   onReorderTasks,
   onUpdateClient,
 }: WeeklyPlannerProps) {
-  const [viewMode, setViewMode] = useState<'kanban' | 'list'>(() => {
+  const [viewModeStored, setViewMode] = useState<'kanban' | 'list'>(() => {
     const saved = localStorage.getItem('planner_view_mode');
     return saved === 'kanban' || saved === 'list' ? saved : 'list';
   });
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  );
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  const viewMode: 'kanban' | 'list' = isMobile ? 'list' : viewModeStored;
   const [addingTaskForDay, setAddingTaskForDay] = useState<DayOfWeek | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('standalone');
@@ -80,8 +91,8 @@ export default function WeeklyPlanner({
   const [expandedCommentsTaskId, setExpandedCommentsTaskId] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('planner_view_mode', viewMode);
-  }, [viewMode]);
+    localStorage.setItem('planner_view_mode', viewModeStored);
+  }, [viewModeStored]);
 
   const {
     selectedUserFilter,
@@ -361,8 +372,8 @@ export default function WeeklyPlanner({
   }) || [];
 
   return (
-    <div className="space-y-8 h-full flex flex-col">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+    <div className="space-y-4 md:space-y-8 h-full flex flex-col">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-2 md:gap-4">
         <div className="flex items-center gap-4">
           <div className="gap-2 flex flex-col">
             <h1 className="text-2xl md:text-4xl font-bold prisma-text tracking-tight">Sprint Semanal</h1>
@@ -378,7 +389,7 @@ export default function WeeklyPlanner({
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-slate-400 font-light">Distribua as demandas nos dias da semana.</p>
+              <p className="hidden md:block text-slate-400 font-light">Distribua as demandas nos dias da semana.</p>
             </div>
           </div>
           <button
@@ -389,7 +400,7 @@ export default function WeeklyPlanner({
             <span className="text-sm font-bold">Exportar Planilha</span>
           </button>
         </div>
-        <div className="flex gap-3 items-center bg-white/5 border border-white/5 px-3 py-2 rounded-2xl">
+        <div className="hidden md:flex gap-3 items-center bg-white/5 border border-white/5 px-3 py-2 rounded-2xl">
           <div className="flex bg-black/20 rounded-lg p-1 border border-white/5">
             <button
               onClick={() => setViewMode('list')}
@@ -422,7 +433,17 @@ export default function WeeklyPlanner({
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 -mt-4">
+      {isCurrentWeek && (
+        <div className="md:hidden flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/20 text-xs">
+          <Sun className="w-4 h-4 text-amber-300 flex-shrink-0" />
+          <span className="text-amber-300/90 font-bold uppercase tracking-wider text-[10px]">Hoje · {todayDayOfWeek}</span>
+          <span className="text-slate-300 ml-auto">
+            <span className="font-bold text-white">{todaySummary.pending}</span>/<span className="text-slate-400">{todaySummary.total}</span> pend.
+          </span>
+        </div>
+      )}
+
+      <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 -mt-4">
         {isCurrentWeek ? (
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/20">
             <Sun className="w-5 h-5 text-amber-300 flex-shrink-0" />
@@ -509,7 +530,24 @@ export default function WeeklyPlanner({
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-3 md:items-center -mt-4">
+      <button
+        type="button"
+        onClick={() => setMobileFiltersOpen(v => !v)}
+        className="md:hidden flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5 text-slate-300 text-xs font-bold uppercase tracking-wider"
+      >
+        <span className="flex items-center gap-2">
+          <Search className="w-3.5 h-3.5" />
+          Filtros
+          {(selectedClientFilter.length + selectedUserFilter.length) > 0 && (
+            <span className="bg-indigo-500/30 text-indigo-200 text-[10px] px-1.5 rounded-full">
+              {selectedClientFilter.length + selectedUserFilter.length}
+            </span>
+          )}
+        </span>
+        {mobileFiltersOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+      </button>
+
+      <div className={`${mobileFiltersOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row gap-3 md:items-center md:-mt-4`}>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Cliente</span>
           <div className="flex items-center gap-1 flex-wrap">
