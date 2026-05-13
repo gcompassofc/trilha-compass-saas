@@ -147,12 +147,42 @@ export default function App() {
         if (oldMt && JSON.stringify(oldMt) !== JSON.stringify(newMt)) {
           const q = query(collection(db, 'weeklyTasks'), where('masterTaskId', '==', newMt.id));
           let snapshot = await getDocs(q);
-          
+
           // Fallback para tarefas antigas (legadas) sem masterTaskId
           if (snapshot.empty) {
             const qFallback = query(collection(db, 'weeklyTasks'), where('clientId', '==', updated.id));
             const snapshotFallback = await getDocs(qFallback);
-            
+
+            // Se data foi definida pela primeira vez (não havia antes) e não há WT linkada nem legada,
+            // criar uma nova WeeklyTask agendada conforme a dueDate.
+            if (
+              snapshotFallback.empty &&
+              newMt.dueDate &&
+              oldMt.dueDate !== newMt.dueDate
+            ) {
+              const targetWeekId = getWeekIdFromDateString(newMt.dueDate);
+              const targetDay = getDayOfWeekFromDateString(newMt.dueDate);
+              dbService.addTask({
+                weekId: targetWeekId,
+                day: targetDay,
+                clientId: updated.id,
+                masterTaskId: newMt.id,
+                title: newMt.title,
+                completed: newMt.completed,
+                order: 999,
+                subTasks: newMt.subTasks,
+                responsible: newMt.responsible,
+                responsibles: newMt.responsibles,
+                taskType: newMt.taskType,
+                phase: newMt.phase,
+                dueDate: newMt.dueDate,
+                priority: newMt.priority,
+                estimatedMinutes: newMt.estimatedMinutes,
+                comments: newMt.comments,
+              });
+              return;
+            }
+
             snapshotFallback.docs
               .filter(docSnap => docSnap.data().title === oldMt.title)
               .forEach(docSnap => {
@@ -266,8 +296,18 @@ export default function App() {
   };
 
   const handleDeleteTask = async (id: string) => {
-    // 2. Delete the task
+    const wt = weeklyTasks.find(t => t.id === id);
     await dbService.deleteTask(id);
+    if (wt?.clientId && wt.masterTaskId) {
+      const client = clients.find(c => c.id === wt.clientId);
+      const linkedMt = client?.masterTasks.find(mt => mt.id === wt.masterTaskId);
+      if (client && linkedMt?.dueDate) {
+        const updatedMasterTasks = client.masterTasks.map(mt =>
+          mt.id === wt.masterTaskId ? { ...mt, dueDate: undefined } : mt
+        );
+        await dbService.updateClient({ ...client, masterTasks: updatedMasterTasks });
+      }
+    }
   };
   
   const handleReorderTasks = async (day: DayOfWeek, tasksForDay: WeeklyTask[]) => {

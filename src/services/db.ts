@@ -1,16 +1,17 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  onSnapshot, 
-  query, 
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  query,
   orderBy,
   where,
   setDoc,
   writeBatch,
-  getDocs
+  getDocs,
+  deleteField
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Client, WeeklyTask, TeamMember, FinancialTransaction } from '../types';
@@ -22,6 +23,24 @@ const TEAM_COLLECTION = 'teamMembers';
 
 // Helper to remove undefined fields which Firestore rejects
 const sanitize = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
+
+// For updateDoc payloads: keep top-level undefined as deleteField() so cleared
+// selects ("Ninguém", limpar data) realmente removam o campo no Firestore. Nested
+// undefineds são tratadas pelo JSON.stringify (silenciosamente removidas).
+const sanitizeForUpdate = <T extends Record<string, unknown>>(data: T): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (v === undefined) {
+      out[k] = deleteField();
+    } else if (v === null || typeof v !== 'object') {
+      out[k] = v;
+    } else {
+      // Para arrays/objetos aninhados, usa o sanitize tradicional que dropa undefineds.
+      out[k] = JSON.parse(JSON.stringify(v));
+    }
+  }
+  return out;
+};
 
 const handleError = (error: any, context: string) => {
   console.error(`Firebase Error (${context}):`, error);
@@ -60,7 +79,7 @@ export const dbService = {
   updateClient: async (client: Client) => {
     try {
       const { id, ...data } = client;
-      await updateDoc(doc(db, CLIENTS_COLLECTION, id), sanitize(data));
+      await updateDoc(doc(db, CLIENTS_COLLECTION, id), sanitizeForUpdate(data));
     } catch (e) { handleError(e, "Atualizar Cliente"); }
   },
 
@@ -117,7 +136,7 @@ export const dbService = {
   updateTask: async (task: WeeklyTask) => {
     try {
       const { id, ...data } = task;
-      await updateDoc(doc(db, TASKS_COLLECTION, id), sanitize(data));
+      await updateDoc(doc(db, TASKS_COLLECTION, id), sanitizeForUpdate(data));
     } catch (e) { handleError(e, "Atualizar Demanda"); }
   },
 
@@ -127,14 +146,13 @@ export const dbService = {
     } catch (e) { handleError(e, "Deletar Demanda"); }
   },
 
-  // Batch update for reordering
+  // Batch update for reordering — escreve apenas o campo order para evitar
+  // sobrescrever mudanças concorrentes (toggle completed durante drag, etc).
   reorderTasks: async (tasks: WeeklyTask[]) => {
     try {
       const batch = writeBatch(db);
       for (const task of tasks) {
-        const { id, ...data } = task;
-        const docRef = doc(db, TASKS_COLLECTION, id);
-        batch.update(docRef, sanitize(data));
+        batch.update(doc(db, TASKS_COLLECTION, task.id), { order: task.order });
       }
       await batch.commit();
     } catch (e) { handleError(e, "Reordenar Demandas"); }
@@ -162,13 +180,47 @@ export const dbService = {
   updateTeamMember: async (member: TeamMember) => {
     try {
       const { id, ...data } = member;
-      await updateDoc(doc(db, TEAM_COLLECTION, id), sanitize(data));
+      await updateDoc(doc(db, TEAM_COLLECTION, id), sanitizeForUpdate(data));
     } catch (e) { handleError(e, "Atualizar Membro"); }
   },
 
   deleteTeamMember: async (id: string) => {
     try {
-      await deleteDoc(doc(db, TEAM_COLLECTION, id));
+      const batch = writeBatch(db);
+      batch.delete(doc(db, TEAM_COLLECTION, id));
+
+      const clientsSnap = await getDocs(collection(db, CLIENTS_COLLECTION));
+      clientsSnap.forEach((cdoc) => {
+        const c = cdoc.data() as Client;
+        let touched = false;
+        const newMasterTasks = (c.masterTasks ?? []).map((mt) => {
+          const hasPrimary = mt.responsible === id;
+          const list = mt.responsibles ?? [];
+          const hasSecondary = list.includes(id);
+          if (!hasPrimary && !hasSecondary) return mt;
+          touched = true;
+          const next = { ...mt };
+          if (hasPrimary) delete next.responsible;
+          if (hasSecondary) next.responsibles = list.filter((x) => x !== id);
+          return next;
+        });
+        if (touched) batch.update(cdoc.ref, sanitize({ masterTasks: newMasterTasks }));
+      });
+
+      const tasksSnap = await getDocs(collection(db, TASKS_COLLECTION));
+      tasksSnap.forEach((tdoc) => {
+        const t = tdoc.data() as WeeklyTask;
+        const list = t.responsibles ?? [];
+        const hasPrimary = t.responsible === id;
+        const hasSecondary = list.includes(id);
+        if (!hasPrimary && !hasSecondary) return;
+        const payload: Record<string, unknown> = {};
+        if (hasPrimary) payload.responsible = deleteField();
+        if (hasSecondary) payload.responsibles = list.filter((x) => x !== id);
+        batch.update(tdoc.ref, payload);
+      });
+
+      await batch.commit();
     } catch (e) { handleError(e, "Deletar Membro"); }
   },
 
@@ -194,7 +246,7 @@ export const dbService = {
   updateTransaction: async (transaction: FinancialTransaction) => {
     try {
       const { id, ...data } = transaction;
-      await updateDoc(doc(db, 'financialTransactions', id), sanitize(data));
+      await updateDoc(doc(db, 'financialTransactions', id), sanitizeForUpdate(data));
     } catch (e) { handleError(e, "Atualizar Transação"); }
   },
 

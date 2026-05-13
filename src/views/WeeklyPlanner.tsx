@@ -182,17 +182,24 @@ export default function WeeklyPlanner({
     setCurrentWeekId(newWeekId);
   };
 
+  const nextOrderForDay = (day: DayOfWeek): number => {
+    const orders = weeklyTasks.filter(t => t.day === day).map(t => t.order);
+    return orders.length > 0 ? Math.max(...orders) + 1 : 0;
+  };
+
   const handleAddTask = (day: DayOfWeek, masterTask?: MasterTask) => {
+    const title = (masterTask ? masterTask.title : newTaskTitle).trim();
+    if (!title) return;
     const targetDate = getDateForDayOfWeek(currentWeekId, day);
     const task: Omit<WeeklyTask, 'id'> = {
       weekId: currentWeekId,
       day,
       dueDate: masterTask?.dueDate || targetDate, // Usa a data do masterTask, ou a data preenchida
-      title: masterTask ? masterTask.title : newTaskTitle,
+      title,
       clientId: selectedClientId === 'standalone' ? undefined : selectedClientId,
       masterTaskId: masterTask?.id,
       completed: masterTask ? masterTask.completed : false,
-      order: weeklyTasks.filter(t => t.day === day).length,
+      order: nextOrderForDay(day),
       subTasks: masterTask?.subTasks || [],
       responsible: masterTask ? masterTask.responsible : newTaskResponsibles[0],
       responsibles: masterTask ? (masterTask.responsibles || (masterTask.responsible ? [masterTask.responsible] : [])) : newTaskResponsibles,
@@ -244,7 +251,7 @@ export default function WeeklyPlanner({
       clientId: selectedClientId,
       masterTaskId,
       completed: false,
-      order: weeklyTasks.filter(t => t.day === day).length,
+      order: nextOrderForDay(day),
       subTasks: [],
       responsible: newTaskResponsibles[0],
       responsibles: newTaskResponsibles,
@@ -344,11 +351,12 @@ export default function WeeklyPlanner({
       ...task, 
       day: newDay,
       dueDate: newDate,
-      order: weeklyTasks.filter(t => t.day === newDay).length 
+      order: nextOrderForDay(newDay)
     });
   };
 
   const selectedClientBacklog = clients.find(c => c.id === selectedClientId)?.masterTasks.filter(t => {
+    if (t.dueDate) return false;
     return !weeklyTasks.some(wt => wt.masterTaskId === t.id);
   }) || [];
 

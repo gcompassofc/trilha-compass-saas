@@ -1,7 +1,7 @@
 import { auth } from '../firebase/config';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { motion } from 'motion/react';
-import { Lock } from 'lucide-react';
+import { toast } from './Toast';
 
 export default function Login() {
   const handleLogin = async () => {
@@ -10,6 +10,9 @@ export default function Login() {
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error("Login failed", error);
+      const code = (error as { code?: string })?.code;
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
+      toast.error('Falha ao entrar', error instanceof Error ? error.message : undefined);
     }
   };
 
