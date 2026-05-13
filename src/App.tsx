@@ -152,11 +152,12 @@ export default function App() {
           if (snapshot.empty) {
             const qFallback = query(collection(db, 'weeklyTasks'), where('clientId', '==', updated.id));
             const snapshotFallback = await getDocs(qFallback);
+            const legacyMatches = snapshotFallback.docs.filter(d => d.data().title === oldMt.title);
 
-            // Se data foi definida pela primeira vez (não havia antes) e não há WT linkada nem legada,
+            // Se data foi definida (não havia antes) e não há WT linkada nem legada com mesmo título,
             // criar uma nova WeeklyTask agendada conforme a dueDate.
             if (
-              snapshotFallback.empty &&
+              legacyMatches.length === 0 &&
               newMt.dueDate &&
               oldMt.dueDate !== newMt.dueDate
             ) {
@@ -183,8 +184,7 @@ export default function App() {
               return;
             }
 
-            snapshotFallback.docs
-              .filter(docSnap => docSnap.data().title === oldMt.title)
+            legacyMatches
               .forEach(docSnap => {
                 const wt = docSnap.data() as WeeklyTask;
                 let wtUpdated = {
