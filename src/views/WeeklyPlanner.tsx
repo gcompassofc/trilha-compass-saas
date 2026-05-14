@@ -89,6 +89,36 @@ export default function WeeklyPlanner({
   const [newTaskResponsibles, setNewTaskResponsibles] = useState<string[]>([]);
   const [newTaskType, setNewTaskType] = useState<TaskType>('scope');
   const [expandedCommentsTaskId, setExpandedCommentsTaskId] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('planner_expanded_groups');
+      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('planner_expanded_groups', JSON.stringify(Array.from(expandedGroups)));
+  }, [expandedGroups]);
+
+  const toggleGroup = (key: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const handleReorderGroup = (day: DayOfWeek, allDayTasks: WeeklyTask[], clientKey: string, newGroupTasks: WeeklyTask[]) => {
+    let i = 0;
+    const newDayTasks = allDayTasks.map(t => {
+      const key = t.clientId || 'standalone';
+      if (key === clientKey) return newGroupTasks[i++];
+      return t;
+    });
+    onReorderTasks(day, newDayTasks);
+  };
 
   useEffect(() => {
     localStorage.setItem('planner_view_mode', viewModeStored);
@@ -659,13 +689,40 @@ export default function WeeklyPlanner({
                 </div>
 
                 <div className={`flex flex-col transition-colors ${viewMode === 'kanban' ? 'glass-panel p-3 gap-3 flex-1 min-h-[150px] min-h-0 overflow-hidden' : 'gap-0.5'} ${viewMode === 'kanban' && isToday ? 'border-indigo-500/20 bg-indigo-500/[0.03]' : ''} ${viewMode === 'list' && isToday ? 'border-l-2 border-indigo-500/40 pl-3 -ml-3' : ''}`}>
-                  <Reorder.Group
-                    axis="y"
-                    values={dayTasks}
-                    onReorder={(newTasks) => onReorderTasks(day, newTasks)}
-                    className={`flex flex-col ${viewMode === 'kanban' ? 'gap-2 overflow-y-auto overflow-x-hidden custom-scrollbar pr-1 flex-1 min-h-0' : 'gap-0.5'}`}
-                  >
-                    {dayTasks.map((task) => {
+                  <div className={`flex flex-col ${viewMode === 'kanban' ? 'gap-1.5 overflow-y-auto overflow-x-hidden custom-scrollbar pr-1 flex-1 min-h-0' : 'gap-1'}`}>
+                  {(() => {
+                    const groupsMap = new Map<string, WeeklyTask[]>();
+                    for (const t of dayTasks) {
+                      const k = t.clientId || 'standalone';
+                      if (!groupsMap.has(k)) groupsMap.set(k, []);
+                      groupsMap.get(k)!.push(t);
+                    }
+                    return Array.from(groupsMap.entries()).map(([groupKey, groupTasks]) => {
+                      const groupClient = groupKey === 'standalone' ? null : clients.find(c => c.id === groupKey);
+                      const expandKey = `${day}:${groupKey}`;
+                      const isGroupExpanded = expandedGroups.has(expandKey);
+                      const groupColor = groupClient?.color || '#f59e0b';
+                      const groupName = groupClient ? groupClient.name : 'Pontual';
+                      const groupDoneCount = groupTasks.filter(t => t.completed).length;
+                      return (
+                        <div key={groupKey} className="flex flex-col">
+                          <button
+                            onClick={() => toggleGroup(expandKey)}
+                            className="group/grp flex items-center gap-2 px-1.5 py-1 rounded-md hover:bg-white/[0.03] transition-colors w-full"
+                          >
+                            <ChevronRight className={`w-3 h-3 text-slate-500 transition-transform flex-shrink-0 ${isGroupExpanded ? 'rotate-90' : ''}`} />
+                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: groupColor }} />
+                            <span className="text-[10px] uppercase font-bold tracking-wider truncate" style={{ color: groupColor }}>{groupName}</span>
+                            <span className="text-[10px] font-mono text-slate-500 ml-auto flex-shrink-0">{groupDoneCount}/{groupTasks.length}</span>
+                          </button>
+                          {isGroupExpanded && (
+                          <Reorder.Group
+                            axis="y"
+                            values={groupTasks}
+                            onReorder={(newG) => handleReorderGroup(day, dayTasks, groupKey, newG)}
+                            className={`flex flex-col ${viewMode === 'kanban' ? 'gap-2 mt-1.5' : 'gap-0.5 mt-1 ml-3'}`}
+                          >
+                            {groupTasks.map((task) => {
                       const client = clients.find(c => c.id === task.clientId);
                       const isExpanded = expandedTaskId === task.id;
                       const subTasksDone = (task.subTasks || []).filter(st => st.completed).length;
@@ -1175,8 +1232,14 @@ export default function WeeklyPlanner({
                           </div>
                         </DraggableWrapper>
                       );
-                    })}
-                  </Reorder.Group>
+                            })}
+                          </Reorder.Group>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                  </div>
 
                   <AnimatePresence>
                     {addingTaskForDay === day ? (
