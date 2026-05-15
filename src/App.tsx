@@ -5,8 +5,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import Sidebar from './components/Sidebar';
-import WeeklyPlanner from './views/WeeklyPlanner';
+import Sidebar, { ActiveTab } from './components/Sidebar';
+import SprintPlanner from './views/SprintPlanner/SprintPlanner';
 import ClientManagement from './views/ClientManagement';
 import TeamManagement from './views/TeamManagement';
 import FinancialManagement from './views/FinancialManagement';
@@ -14,7 +14,7 @@ import Login from './components/Login';
 import GlobalSearch from './components/GlobalSearch';
 import ToastContainer from './components/Toast';
 import { Search } from 'lucide-react';
-import { Client, WeeklyTask, DayOfWeek, TeamMember, FinancialTransaction } from './types';
+import { Client, WeeklyTask, DayOfWeek, TeamMember, FinancialTransaction, UserGamification } from './types';
 import { dbService } from './services/db';
 import { auth, db } from './firebase/config';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -23,14 +23,24 @@ import { getWeekId, getWeekIdFromDateString, getDayOfWeekFromDateString } from '
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'planner' | 'clients' | 'team' | 'financial'>('planner');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    const saved = localStorage.getItem('active_tab');
+    // Migrate users coming from the dual-tab transition.
+    if (saved === 'sprint') return 'planner';
+    return (saved as ActiveTab) || 'planner';
+  });
   const [clients, setClients] = useState<Client[]>([]);
   const [weeklyTasks, setWeeklyTasks] = useState<WeeklyTask[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
+  const [gamification, setGamification] = useState<UserGamification[]>([]);
   const [currentWeekId, setCurrentWeekId] = useState(getWeekId(new Date()));
   const [loading, setLoading] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('active_tab', activeTab);
+  }, [activeTab]);
 
   // Keyboard Shortcut for Search
   useEffect(() => {
@@ -72,10 +82,15 @@ export default function App() {
       setTransactions(data);
     });
 
+    const unsubGamification = dbService.subscribeToAllGamification((data) => {
+      setGamification(data);
+    });
+
     return () => {
       unsubClients();
       unsubTeam();
       unsubTransactions();
+      unsubGamification();
     };
   }, [user]);
 
@@ -389,19 +404,19 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
-              className="flex-1 min-h-0 w-full overflow-hidden flex flex-col"
+              className="flex-1 min-h-0 w-full overflow-y-auto"
             >
-              <WeeklyPlanner
+              <SprintPlanner
+                user={user}
                 clients={clients}
                 weeklyTasks={weeklyTasks}
                 teamMembers={teamMembers}
                 currentWeekId={currentWeekId}
                 setCurrentWeekId={setCurrentWeekId}
-                onAddTask={handleAddTask}
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
-                onReorderTasks={handleReorderTasks}
-                onUpdateClient={handleUpdateClient}
+                gamification={gamification}
+                onUpdateGamification={dbService.upsertUserGamification}
               />
             </motion.div>
           )}

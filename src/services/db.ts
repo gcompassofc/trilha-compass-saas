@@ -14,12 +14,13 @@ import {
   deleteField
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Client, WeeklyTask, TeamMember, FinancialTransaction } from '../types';
+import { Client, WeeklyTask, TeamMember, FinancialTransaction, UserGamification } from '../types';
 import { toast } from '../components/Toast';
 
 const CLIENTS_COLLECTION = 'clients';
 const TASKS_COLLECTION = 'weeklyTasks';
 const TEAM_COLLECTION = 'teamMembers';
+const GAMIFICATION_COLLECTION = 'gamification';
 
 // Helper to remove undefined fields which Firestore rejects
 const sanitize = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
@@ -254,5 +255,31 @@ export const dbService = {
     try {
       await deleteDoc(doc(db, 'financialTransactions', id));
     } catch (e) { handleError(e, "Deletar Transação"); }
-  }
+  },
+
+  // Gamification — per-user state for the Sprint Semanal view.
+  subscribeToAllGamification: (callback: (entries: UserGamification[]) => void) => {
+    const q = collection(db, GAMIFICATION_COLLECTION);
+    return onSnapshot(q, (snapshot) => {
+      const entries = snapshot.docs.map(d => ({ ...(d.data() as Omit<UserGamification, 'userId'>), userId: d.id })) as UserGamification[];
+      callback(entries);
+    }, (error) => handleError(error, "Listar Gamificação"));
+  },
+
+  subscribeToUserGamification: (userId: string, callback: (entry: UserGamification | null) => void) => {
+    return onSnapshot(doc(db, GAMIFICATION_COLLECTION, userId), (snap) => {
+      if (!snap.exists()) {
+        callback(null);
+        return;
+      }
+      callback({ ...(snap.data() as Omit<UserGamification, 'userId'>), userId: snap.id });
+    }, (error) => handleError(error, "Ler Gamificação"));
+  },
+
+  upsertUserGamification: async (entry: UserGamification) => {
+    try {
+      const { userId, ...data } = entry;
+      await setDoc(doc(db, GAMIFICATION_COLLECTION, userId), { ...data, updatedAt: Date.now() }, { merge: true });
+    } catch (e) { handleError(e, "Atualizar Gamificação"); }
+  },
 };

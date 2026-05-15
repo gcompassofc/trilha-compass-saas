@@ -1,9 +1,11 @@
-import { LayoutDashboard, Users, Calendar, Settings, LogOut, Building2, DollarSign } from 'lucide-react';
+import { Users, Calendar, Settings, LogOut, Building2, DollarSign } from 'lucide-react';
 import { motion } from 'motion/react';
 
+export type ActiveTab = 'planner' | 'clients' | 'team' | 'financial';
+
 interface SidebarProps {
-  activeTab: 'planner' | 'clients' | 'team' | 'financial';
-  setActiveTab: (tab: 'planner' | 'clients' | 'team' | 'financial') => void;
+  activeTab: ActiveTab;
+  setActiveTab: (tab: ActiveTab) => void;
 }
 
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {

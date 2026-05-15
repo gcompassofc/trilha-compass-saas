@@ -1,6 +1,7 @@
 export type DayOfWeek = 'Segunda' | 'Terça' | 'Quarta' | 'Quinta' | 'Sexta' | 'Sábado' | 'Domingo';
 export type Priority = 'low' | 'medium' | 'high';
 export type TaskType = 'scope' | 'overdelivery';
+export type TaskKind = 'pontual' | 'recorrente' | 'urgente';
 
 export interface SubTask {
   id: string;
@@ -66,6 +67,17 @@ export interface WeeklyTask {
   taskType?: TaskType;
   responsibles?: string[];
   estimatedMinutes?: number;
+  kind?: TaskKind;
+}
+
+export interface UserGamification {
+  userId: string;
+  xp: number;
+  level: number;
+  streak: number;
+  lastActiveDate?: string; // YYYY-MM-DD — para calcular streak
+  totalCompleted?: number;
+  updatedAt?: number;
 }
 
 export interface TeamMember {
