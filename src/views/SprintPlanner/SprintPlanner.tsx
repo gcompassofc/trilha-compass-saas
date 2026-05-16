@@ -3,7 +3,7 @@ import { User } from 'firebase/auth';
 import { Client, DayOfWeek, SprintFocus, SubTask, TaskComment, TaskKind, TaskType, TeamMember, UserGamification, WeeklyTask } from '../../types';
 import { Icon } from './Icons';
 import { buildRanking, clientById, SprintDayView, SprintTaskView, toSprintWeek, toTaskView } from './adapter';
-import { BADGES, badgeById, COMBO_TTL_MS, DEFAULT_DAILY_GOAL, focusKeywords, fmtMinutes, levelFromXp, newlyEarnedBadges, parseTimeText, playPing, rewardForTask, spawnXPFloater, taskMatchesFocus, todayISO, daysBetween } from './utils';
+import { BADGES, badgeById, COMBO_TTL_MS, DEFAULT_DAILY_GOAL, focusKeywords, fmtMinutes, levelFromXp, newlyEarnedBadges, parseTimeText, pickVoiceLine, playPing, playSound, rewardForTask, spawnXPFloater, taskMatchesFocus, todayISO, daysBetween } from './utils';
 import Timer from '../../components/Timer';
 import EstimatedTimePicker from '../../components/EstimatedTimePicker';
 import './sprint.css';
@@ -674,7 +674,7 @@ function ComboBanner({ multiplier }: { multiplier: number }) {
 }
 
 // ── NicePopup ───────────────────────────────────────────────────────────────
-function NicePopup({ xp, combo, bonus, onDone }: { xp: number; combo: number; bonus?: string; onDone: () => void }) {
+function NicePopup({ xp, combo, bonus, title, onDone }: { xp: number; combo: number; bonus?: string; title?: string; onDone: () => void }) {
   useEffect(() => {
     const t = setTimeout(onDone, 2200);
     return () => clearTimeout(t);
@@ -682,10 +682,12 @@ function NicePopup({ xp, combo, bonus, onDone }: { xp: number; combo: number; bo
   return (
     <div className="nice" role="status">
       <div className="nice__icon">🎉</div>
-      <div className="nice__title">Boa!</div>
-      <div className="nice__sub">
-        {combo > 1 ? `Combo x${combo} — você tá voando!` : 'Mais uma tarefa fora da lista.'}
-      </div>
+      <div className="nice__title">{title || 'Boa!'}</div>
+      {combo > 1 && (
+        <div className="nice__sub">
+          Combo x{combo} — você tá voando!
+        </div>
+      )}
       {bonus && <div className="nice__bonus">⚡ {bonus}</div>}
       <div className="nice__xp">
         <Icon.Sparkle size={14} />
@@ -860,7 +862,7 @@ export default function SprintPlanner({
 
   // Combo + UI feedback state
   const [confettiSeed, setConfettiSeed] = useState(0);
-  const [nice, setNice] = useState<{ xp: number; combo: number; bonus?: string } | null>(null);
+  const [nice, setNice] = useState<{ xp: number; combo: number; bonus?: string; title?: string } | null>(null);
 
   // Combo derivado da gamificação persistida — sobrevive a refresh.
   const currentCombo = useMemo(() => {
@@ -1016,7 +1018,8 @@ export default function SprintPlanner({
     });
 
     if (prefs.confetti) setConfettiSeed(Date.now());
-    if (prefs.sound) playPing();
+    const voice = pickVoiceLine();
+    if (prefs.sound) playSound(voice.sound);
     const rect = (ev.target as HTMLElement).getBoundingClientRect();
     spawnXPFloater(rect, reward);
 
@@ -1031,7 +1034,7 @@ export default function SprintPlanner({
       popupBonus = `Streak ${nextStreak}🔥`;
     }
 
-    setNice({ xp: reward, combo: newCombo, bonus: popupBonus });
+    setNice({ xp: reward, combo: newCombo, bonus: popupBonus, title: voice.title });
     if (earned.length > 1) {
       // Empilha o segundo+ badges como toasts simples (1 por vez via setNice — substitui depois de 2.2s)
       setTimeout(() => {
@@ -1619,7 +1622,7 @@ export default function SprintPlanner({
       <ComboBanner multiplier={currentCombo} />
 
       {nice && prefs.confetti && <Confetti seed={confettiSeed} />}
-      {nice && <NicePopup xp={nice.xp} combo={nice.combo} bonus={nice.bonus} onDone={() => setNice(null)} />}
+      {nice && <NicePopup xp={nice.xp} combo={nice.combo} bonus={nice.bonus} title={nice.title} onDone={() => setNice(null)} />}
 
       {tweaksOpen && (
         <div role="dialog"

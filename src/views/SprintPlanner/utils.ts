@@ -55,16 +55,33 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((db - da) / 86400000);
 }
 
-// Subtle completion sound (optional). The freq arg is ignored — kept for signature compatibility.
-const SOUND_URL = '/sounds/videoplayback.mp3';
-export function playPing(_freq = 880) {
+// Voice lines: frase + áudio pareados. Sorteados a cada conclusão.
+export interface VoiceLine {
+  title: string;
+  sound: string; // caminho absoluto sob /public
+}
+export const VOICE_LINES: VoiceLine[] = [
+  { title: 'Boa feladamãe', sound: '/sounds/NINJA.MP3' },
+  { title: 'Gostei de ver, ein', sound: '/sounds/XANDAO.MP3' },
+  { title: 'Oloco, o caba é bão!', sound: '/sounds/XANDAO2.MP3' },
+];
+
+export function pickVoiceLine(): VoiceLine {
+  return VOICE_LINES[Math.floor(Math.random() * VOICE_LINES.length)];
+}
+
+// Toca um áudio arbitrário. Mantém a assinatura antiga (playPing) compatível.
+export function playSound(url: string, volume = 0.6) {
   try {
-    const a = new Audio(SOUND_URL);
-    a.volume = 0.35;
+    const a = new Audio(url);
+    a.volume = volume;
     void a.play();
   } catch {
     /* noop */
   }
+}
+export function playPing(_freq = 880) {
+  playSound('/sounds/videoplayback.mp3', 0.35);
 }
 
 // Default daily goal for streak — quantas tarefas no dia mantêm o fogo aceso.
