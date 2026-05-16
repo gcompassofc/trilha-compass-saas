@@ -224,9 +224,10 @@ function TaskRow({ task, clients, team, onToggle, ungrouped, onExpand, expanded 
 }
 
 // ── TaskDetail (expanded panel under a row) ─────────────────────────────────
-function TaskDetail({ task, team, currentUserName, onUpdate, onDelete }: {
+function TaskDetail({ task, team, clients, currentUserName, onUpdate, onDelete }: {
   task: SprintTaskView;
   team: TeamMember[];
+  clients: Client[];
   currentUserName: string;
   onUpdate: (next: WeeklyTask) => void;
   onDelete: () => void;
@@ -332,6 +333,18 @@ function TaskDetail({ task, team, currentUserName, onUpdate, onDelete }: {
       <div>
         <div className="task-detail__section-title">Propriedades</div>
         <div className="task-detail__row">
+          <select
+            className="task-detail__select"
+            value={raw.clientId ?? ''}
+            onChange={e => onUpdate({ ...raw, clientId: e.target.value || undefined, masterTaskId: undefined })}
+            title="Cliente"
+          >
+            <option value="">Sem cliente</option>
+            {clients.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+
           <select className="task-detail__select" value={task.kind} onChange={e => setKind(e.target.value as TaskKind)} title="Tipo da tarefa">
             <option value="pontual">Pontual</option>
             <option value="recorrente">Recorrente</option>
@@ -1193,7 +1206,7 @@ export default function SprintPlanner({
                           </span>
                         </div>
                         {expanded && (
-                          <TaskDetail task={task} team={teamMembers}
+                          <TaskDetail task={task} team={teamMembers} clients={clients}
                             currentUserName={accountName}
                             onUpdate={onUpdateTask}
                             onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
@@ -1306,7 +1319,7 @@ export default function SprintPlanner({
                                   onToggle={handleToggleTask} ungrouped={false}
                                   onExpand={() => toggleExpand(task.id)} expanded={expanded} />
                                 {expanded && (
-                                  <TaskDetail task={task} team={teamMembers}
+                                  <TaskDetail task={task} team={teamMembers} clients={clients}
                                     currentUserName={accountName}
                                     onUpdate={onUpdateTask}
                                     onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
@@ -1326,7 +1339,7 @@ export default function SprintPlanner({
                             onToggle={handleToggleTask} ungrouped={true}
                             onExpand={() => toggleExpand(task.id)} expanded={expanded} />
                           {expanded && (
-                            <TaskDetail task={task} team={teamMembers}
+                            <TaskDetail task={task} team={teamMembers} clients={clients}
                               currentUserName={accountName}
                               onUpdate={onUpdateTask}
                               onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
