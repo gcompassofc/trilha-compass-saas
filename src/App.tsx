@@ -34,6 +34,7 @@ export default function App() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [gamification, setGamification] = useState<UserGamification[]>([]);
+  const [incompleteTasks, setIncompleteTasks] = useState<WeeklyTask[]>([]);
   const [currentWeekId, setCurrentWeekId] = useState(getWeekId(new Date()));
   const [loading, setLoading] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -86,11 +87,16 @@ export default function App() {
       setGamification(data);
     });
 
+    const unsubIncomplete = dbService.subscribeToIncompleteTasks((data) => {
+      setIncompleteTasks(data);
+    });
+
     return () => {
       unsubClients();
       unsubTeam();
       unsubTransactions();
       unsubGamification();
+      unsubIncomplete();
     };
   }, [user]);
 
@@ -411,10 +417,12 @@ export default function App() {
                 clients={clients}
                 weeklyTasks={weeklyTasks}
                 teamMembers={teamMembers}
+                incompleteTasks={incompleteTasks}
                 currentWeekId={currentWeekId}
                 setCurrentWeekId={setCurrentWeekId}
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
+                onAddTask={handleAddTask}
                 gamification={gamification}
                 onUpdateGamification={dbService.upsertUserGamification}
               />

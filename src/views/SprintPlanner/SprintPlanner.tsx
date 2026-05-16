@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { User } from 'firebase/auth';
-import { Client, DayOfWeek, SubTask, TaskComment, TaskKind, TeamMember, UserGamification, WeeklyTask } from '../../types';
+import { Client, DayOfWeek, SubTask, TaskComment, TaskKind, TaskType, TeamMember, UserGamification, WeeklyTask } from '../../types';
 import { Icon } from './Icons';
-import { buildRanking, clientById, SprintDayView, SprintTaskView, toSprintWeek } from './adapter';
+import { buildRanking, clientById, SprintDayView, SprintTaskView, toSprintWeek, toTaskView } from './adapter';
 import { fmtMinutes, levelFromXp, parseTimeText, playPing, spawnXPFloater, todayISO, daysBetween } from './utils';
+import Timer from '../../components/Timer';
+import EstimatedTimePicker from '../../components/EstimatedTimePicker';
 import './sprint.css';
 
 interface SprintPlannerProps {
@@ -11,10 +13,12 @@ interface SprintPlannerProps {
   clients: Client[];
   weeklyTasks: WeeklyTask[];
   teamMembers: TeamMember[];
+  incompleteTasks: WeeklyTask[];
   currentWeekId: string;
   setCurrentWeekId: (weekId: string) => void;
   onUpdateTask: (task: WeeklyTask) => void;
   onDeleteTask: (id: string) => void;
+  onAddTask: (task: Omit<WeeklyTask, 'id'>) => void;
   gamification: UserGamification[];
   onUpdateGamification: (entry: UserGamification) => void;
 }
@@ -35,18 +39,24 @@ const DEFAULT_PREFS: Prefs = {
   accent: '#6366f1',
   theme: 'dark',
   density: 'regular',
-  showRightPanel: true,
+  showRightPanel: false,
   confetti: true,
   sound: false,
 };
 
 const PREFS_KEY = 'sprint_planner_prefs';
+const PREFS_VERSION = 2;
 
 function loadPrefs(): Prefs {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
     if (!raw) return DEFAULT_PREFS;
-    return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw) as Partial<Prefs> & { __v?: number };
+    // Migration: force ranking off by default; users opt-in by clicking the dock toggle.
+    if ((parsed.__v ?? 0) < PREFS_VERSION) {
+      return { ...DEFAULT_PREFS, ...parsed, showRightPanel: false };
+    }
+    return { ...DEFAULT_PREFS, ...parsed };
   } catch {
     return DEFAULT_PREFS;
   }
@@ -223,21 +233,20 @@ function TaskDetail({ task, team, currentUserName, onUpdate, onDelete }: {
   const subtasks: SubTask[] = raw.subTasks || [];
   const comments: TaskComment[] = raw.comments || [];
 
+  const [titleDraft, setTitleDraft] = useState(raw.title);
+  useEffect(() => { setTitleDraft(raw.title); }, [raw.title]);
   const [newSub, setNewSub] = useState('');
   const [newComment, setNewComment] = useState('');
-  const [timeDraft, setTimeDraft] = useState(task.estimatedMinutes > 0 ? fmtMinutes(task.estimatedMinutes) : '');
 
-  const commitTime = () => {
-    const parsed = parseTimeText(timeDraft);
-    if (parsed === null) {
-      // Empty input clears estimate
-      if (timeDraft.trim() === '') onUpdate({ ...raw, estimatedMinutes: undefined });
-      return;
-    }
-    onUpdate({ ...raw, estimatedMinutes: parsed });
+  const commitTitle = () => {
+    const next = titleDraft.trim();
+    if (!next || next === raw.title) return;
+    onUpdate({ ...raw, title: next });
   };
 
   const setKind = (kind: TaskKind) => onUpdate({ ...raw, kind });
+  const setType = (taskType: TaskType | undefined) => onUpdate({ ...raw, taskType });
+  const setDueDate = (dueDate: string | undefined) => onUpdate({ ...raw, dueDate: dueDate || undefined });
 
   const toggleResponsible = (memberId: string) => {
     const cur = new Set(raw.responsibles || (raw.responsible ? [raw.responsible] : []));
@@ -270,6 +279,22 @@ function TaskDetail({ task, team, currentUserName, onUpdate, onDelete }: {
     onUpdate({ ...raw, subTasks: subtasks.filter(s => s.id !== id) });
   };
 
+  const updateSubtask = (id: string, patch: Partial<SubTask>) => {
+    const updated = subtasks.map(s => s.id === id ? { ...s, ...patch } : s);
+    onUpdate({ ...raw, subTasks: updated });
+  };
+
+  const moveSubtask = (id: string, delta: -1 | 1) => {
+    const idx = subtasks.findIndex(s => s.id === id);
+    if (idx < 0) return;
+    const target = idx + delta;
+    if (target < 0 || target >= subtasks.length) return;
+    const next = subtasks.slice();
+    const [item] = next.splice(idx, 1);
+    next.splice(target, 0, item);
+    onUpdate({ ...raw, subTasks: next });
+  };
+
   const addComment = () => {
     const text = newComment.trim();
     if (!text) return;
@@ -291,26 +316,46 @@ function TaskDetail({ task, team, currentUserName, onUpdate, onDelete }: {
 
   return (
     <div className="task-detail">
+      {/* Title */}
+      <input
+        className="task-detail__title-input"
+        value={titleDraft}
+        onChange={e => setTitleDraft(e.target.value)}
+        onBlur={commitTitle}
+        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        placeholder="Título da tarefa"
+      />
+
       {/* Properties row */}
       <div>
         <div className="task-detail__section-title">Propriedades</div>
         <div className="task-detail__row">
-          <select className="task-detail__select" value={task.kind} onChange={e => setKind(e.target.value as TaskKind)}>
+          <select className="task-detail__select" value={task.kind} onChange={e => setKind(e.target.value as TaskKind)} title="Tipo da tarefa">
             <option value="pontual">Pontual</option>
             <option value="recorrente">Recorrente</option>
             <option value="urgente">Urgente</option>
           </select>
-          <div className="task-detail__field" title="Tempo estimado (ex: 1h30, 45min, 2h)">
-            <Icon.Clock size={14} />
-            <input
-              className="task-detail__input"
-              placeholder="1h, 30min…"
-              value={timeDraft}
-              onChange={e => setTimeDraft(e.target.value)}
-              onBlur={commitTime}
-              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-            />
+
+          <div className="task-detail__seg" role="tablist" aria-label="Escopo">
+            <button data-active={raw.taskType !== 'overdelivery'} onClick={() => setType('scope')}>Escopo</button>
+            <button data-active={raw.taskType === 'overdelivery'} onClick={() => setType('overdelivery')}>Overdelivery</button>
           </div>
+
+          <input
+            type="date"
+            className="task-detail__date"
+            value={raw.dueDate || ''}
+            onChange={e => setDueDate(e.target.value)}
+            title="Data de entrega"
+          />
+          {raw.dueDate && (
+            <button className="task-detail__chip" onClick={() => setDueDate(undefined)} title="Remover data">
+              <Icon.X size={12} /> Sem data
+            </button>
+          )}
+
+          <Timer item={raw} onChange={onUpdate} size="sm" />
+          <EstimatedTimePicker value={raw.estimatedMinutes} onChange={v => onUpdate({ ...raw, estimatedMinutes: v })} size="sm" />
         </div>
       </div>
 
@@ -344,14 +389,23 @@ function TaskDetail({ task, team, currentUserName, onUpdate, onDelete }: {
             </span>
           )}
         </div>
-        {subtasks.map(s => (
+        {subtasks.map((s, idx) => (
           <div key={s.id} className="subtask" data-done={s.completed ? 'true' : 'false'}>
             <input type="checkbox" className="subtask__check" checked={s.completed} onChange={() => toggleSubtask(s.id)} />
+            <span className="subtask__reorder">
+              <button onClick={() => moveSubtask(s.id, -1)} disabled={idx === 0} title="Mover para cima">
+                <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}><Icon.ChevDown size={10} /></span>
+              </button>
+              <button onClick={() => moveSubtask(s.id, 1)} disabled={idx === subtasks.length - 1} title="Mover para baixo">
+                <Icon.ChevDown size={10} />
+              </button>
+            </span>
             <input className="subtask__title" value={s.title}
               onChange={e => renameSubtask(s.id, e.target.value)}
               onBlur={e => { if (!e.target.value.trim()) deleteSubtask(s.id); }}
             />
-            <span />
+            <Timer item={s} onChange={(next) => updateSubtask(s.id, next)} size="xs" />
+            <EstimatedTimePicker value={s.estimatedMinutes} onChange={(v) => updateSubtask(s.id, { estimatedMinutes: v })} size="xs" />
             <button className="subtask__del" onClick={() => deleteSubtask(s.id)} title="Remover">
               <Icon.X size={14} />
             </button>
@@ -623,14 +677,25 @@ function applyTheme(el: HTMLElement | null, prefs: Prefs) {
 
 // ── Main view ───────────────────────────────────────────────────────────────
 export default function SprintPlanner({
-  user, clients, weeklyTasks, teamMembers, currentWeekId, setCurrentWeekId,
-  onUpdateTask, onDeleteTask, gamification, onUpdateGamification,
+  user, clients, weeklyTasks, teamMembers, incompleteTasks, currentWeekId, setCurrentWeekId,
+  onUpdateTask, onDeleteTask, onAddTask, gamification, onUpdateGamification,
 }: SprintPlannerProps) {
   const scopeRef = useRef<HTMLDivElement>(null);
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
 
+  // Mobile detection — used to switch right panel to drawer mode.
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches,
+  );
   useEffect(() => {
-    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+    const mq = window.matchMedia('(max-width: 1024px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ ...prefs, __v: PREFS_VERSION }));
     applyTheme(scopeRef.current, prefs);
   }, [prefs]);
 
@@ -666,6 +731,64 @@ export default function SprintPlanner({
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const toggleExpand = (id: string) => setExpandedTaskId(cur => cur === id ? null : id);
 
+  // Client groups collapsed by default — toggle open/close per day+client.
+  const [openClientGroups, setOpenClientGroups] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('sprint_open_cgroups');
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
+  useEffect(() => {
+    localStorage.setItem('sprint_open_cgroups', JSON.stringify(Array.from(openClientGroups)));
+  }, [openClientGroups]);
+  const toggleClientGroup = (key: string) => setOpenClientGroups(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+
+  // Inline "add task" form state — open per day
+  const [addingForDay, setAddingForDay] = useState<DayOfWeek | null>(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [newClient, setNewClient] = useState<string>(''); // empty = "Sem cliente"
+  const [newKind, setNewKind] = useState<TaskKind>('pontual');
+  const [newEst, setNewEst] = useState<number | undefined>(undefined);
+  const [newResp, setNewResp] = useState<string[]>([]);
+
+  const resetAddForm = () => {
+    setAddingForDay(null);
+    setNewTitle('');
+    setNewClient('');
+    setNewKind('pontual');
+    setNewEst(undefined);
+    setNewResp([]);
+  };
+
+  const startAdd = (day: DayOfWeek) => {
+    setAddingForDay(day);
+    setOpenDays(s => { const next = new Set(s); next.add(day); return next; });
+  };
+
+  const submitAdd = () => {
+    if (!addingForDay) return;
+    const title = newTitle.trim();
+    if (!title) return;
+    const dayTasks = weeklyTasks.filter(t => t.day === addingForDay && t.weekId === currentWeekId);
+    const nextOrder = dayTasks.length ? Math.max(...dayTasks.map(t => t.order ?? 0)) + 1 : 0;
+    onAddTask({
+      weekId: currentWeekId,
+      day: addingForDay,
+      title,
+      completed: false,
+      order: nextOrder,
+      clientId: newClient || undefined,
+      kind: newKind,
+      estimatedMinutes: newEst,
+      responsibles: newResp.length ? newResp : undefined,
+    });
+    resetAddForm();
+  };
+
   // Combo + UI feedback state
   const [combo, setCombo] = useState(0);
   const [confettiSeed, setConfettiSeed] = useState(0);
@@ -690,6 +813,22 @@ export default function SprintPlanner({
     const today = sprintDays.find(d => d.today);
     if (today) setOpenDays(new Set([today.day]));
   }, [currentWeekId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Overdue tasks (atrasadas) — incomplete tasks from past weeks. Shown at the top
+  // so the team knows what to reallocate. Sorted oldest first.
+  const overdueTasks = useMemo(() => {
+    return incompleteTasks
+      .filter(t => t.weekId < currentWeekId)
+      .map(t => toTaskView(t))
+      .filter(t => {
+        if (clientFilter !== '__all' && !t.clients.includes(clientFilter)) return false;
+        if (personFilter !== '__all' && !t.people.includes(personFilter)) return false;
+        return true;
+      })
+      .sort((a, b) => (a.raw.weekId).localeCompare(b.raw.weekId));
+  }, [incompleteTasks, currentWeekId, clientFilter, personFilter]);
+
+  const [overdueOpen, setOverdueOpen] = useState(true);
 
   const allVisibleTasks = useMemo(() => sprintDays.flatMap(d => d.tasks), [sprintDays]);
   const totalCount = allVisibleTasks.length;
@@ -792,8 +931,8 @@ export default function SprintPlanner({
     <div ref={scopeRef} className="sprint-scope">
       <div className="bg-orbs"><span /></div>
 
-      <div className="shell" style={{ gridTemplateColumns: prefs.showRightPanel ? `0 1fr var(--right-w)` : `0 1fr` }}>
-        <div />
+      <div className="shell" style={isMobile ? undefined : { gridTemplateColumns: prefs.showRightPanel ? `0 1fr var(--right-w)` : `0 1fr` }}>
+        {!isMobile && <div />}
 
         <main className="main main--focus">
           <header className="focus-head">
@@ -841,6 +980,75 @@ export default function SprintPlanner({
             </div>
           </header>
 
+          {overdueTasks.length > 0 && (
+            <div className="day glass overdue" data-open={overdueOpen ? 'true' : 'false'}>
+              <header className="day__head" onClick={() => setOverdueOpen(v => !v)}>
+                <div className="overdue__title">
+                  ATRASADAS
+                  <span className="overdue__count">{overdueTasks.length}</span>
+                </div>
+                <span className="day__chev"><Icon.ChevDown size={18} /></span>
+              </header>
+              {overdueOpen && (
+                <div className="day__body">
+                  {overdueTasks.map(task => {
+                    const expanded = expandedTaskId === task.id;
+                    const taskDate = new Date(task.raw.weekId);
+                    // Compute scheduled date from weekId + day for accurate "X dias atrás"
+                    const days: Record<DayOfWeek, number> = {
+                      'Segunda': 0, 'Terça': 1, 'Quarta': 2, 'Quinta': 3, 'Sexta': 4, 'Sábado': 5, 'Domingo': 6,
+                    };
+                    taskDate.setDate(taskDate.getDate() + (days[task.raw.day] ?? 0));
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const daysLate = Math.max(1, Math.floor((today.getTime() - taskDate.getTime()) / 86400000));
+                    return (
+                      <div key={task.id} className="task-wrap">
+                        <div className="task task--ungrouped" data-done="false">
+                          <input
+                            type="checkbox"
+                            className="task__check"
+                            checked={false}
+                            onChange={(ev) => handleToggleTask(task, ev)}
+                          />
+                          <span className="task__bar" style={{ background: 'var(--danger)' }} />
+                          <div className="task__title">
+                            <span className="task__title-text" onClick={() => toggleExpand(task.id)}>
+                              {task.title}
+                            </span>
+                            <span className="tag tag--urgente" title={`${daysLate} ${daysLate === 1 ? 'dia' : 'dias'} atrasada`}>{daysLate}d atrás</span>
+                          </div>
+                          <span className="task__time">
+                            <Icon.Clock size={14} />
+                            {task.estimatedMinutes > 0 ? fmtMinutes(task.estimatedMinutes) : '—'}
+                          </span>
+                          <span className="avatars">
+                            {task.people.map(id => {
+                              const p = teamMembers.find(t => t.id === id);
+                              if (!p) return null;
+                              const initials = p.name.split(' ').slice(0, 2).map(s => s[0]).join('').toUpperCase();
+                              return (
+                                <span key={id} className="avatar" title={p.name}>
+                                  {p.photoUrl ? <img src={p.photoUrl} alt="" /> : initials}
+                                </span>
+                              );
+                            })}
+                          </span>
+                        </div>
+                        {expanded && (
+                          <TaskDetail task={task} team={teamMembers}
+                            currentUserName={accountName}
+                            onUpdate={onUpdateTask}
+                            onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {sprintDays.map(d => (
             <div key={d.day} className="day glass"
               data-open={openDays.has(d.day) ? 'true' : 'false'}
@@ -850,8 +1058,70 @@ export default function SprintPlanner({
                   {d.day.toUpperCase()}
                   <span className="day__count">{d.tasks.length}</span>
                 </div>
-                <span className="day__chev"><Icon.ChevDown size={18} /></span>
+                <span className="day__head-right">
+                  <button className="day__add-btn"
+                    onClick={(e) => { e.stopPropagation(); startAdd(d.day); }}
+                    title="Adicionar tarefa">
+                    <Icon.Plus size={14} />
+                  </button>
+                  <span className="day__chev"><Icon.ChevDown size={18} /></span>
+                </span>
               </header>
+              {addingForDay === d.day && (
+                <div className="day-add" onClick={e => e.stopPropagation()}>
+                  <input
+                    autoFocus
+                    className="day-add__title"
+                    placeholder="Título da tarefa…"
+                    value={newTitle}
+                    onChange={e => setNewTitle(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') submitAdd();
+                      if (e.key === 'Escape') resetAddForm();
+                    }}
+                  />
+                  <div className="day-add__row">
+                    <select className="task-detail__select" value={newClient} onChange={e => setNewClient(e.target.value)} title="Cliente">
+                      <option value="">Sem cliente</option>
+                      {clients.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <select className="task-detail__select" value={newKind} onChange={e => setNewKind(e.target.value as TaskKind)} title="Tipo">
+                      <option value="pontual">Pontual</option>
+                      <option value="recorrente">Recorrente</option>
+                      <option value="urgente">Urgente</option>
+                    </select>
+                    <EstimatedTimePicker value={newEst} onChange={(v: number | undefined) => setNewEst(v)} size="sm" />
+                  </div>
+                  <div className="day-add__row">
+                    {teamMembers.length === 0 && (
+                      <span style={{ fontSize: 12.5, color: 'var(--text-3)' }}>Sem membros cadastrados.</span>
+                    )}
+                    {teamMembers.map(m => {
+                      const active = newResp.includes(m.id);
+                      const initials = m.name.split(' ').slice(0, 2).map(s => s[0]).join('').toUpperCase();
+                      return (
+                        <button key={m.id} className="task-detail__chip" data-active={active ? 'true' : 'false'}
+                          onClick={() => setNewResp(prev => prev.includes(m.id) ? prev.filter(x => x !== m.id) : [...prev, m.id])}>
+                          <span className="avatar">
+                            {m.photoUrl ? <img src={m.photoUrl} alt="" /> : <span style={{ fontSize: 9, fontWeight: 700 }}>{initials}</span>}
+                          </span>
+                          {m.name.split(' ')[0]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="day-add__actions">
+                    <button className="day-add__submit" disabled={!newTitle.trim()} onClick={submitAdd}>
+                      Adicionar
+                    </button>
+                    <button className="day-add__cancel" onClick={resetAddForm}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
               {openDays.has(d.day) && (
                 <div className="day__body">
                   {d.tasks.length === 0 ? (
@@ -859,32 +1129,37 @@ export default function SprintPlanner({
                       Nenhuma tarefa nesta visualização.
                     </div>
                   ) : grouped ? (
-                    groupTasksByClient(d.tasks, clients).map(g => (
-                      <div key={g.key} className="cgroup">
-                        <header className="cgroup__head">
-                          <span className="cgroup__dot" style={{ ['--cgroup-color' as any]: g.color } as React.CSSProperties} />
-                          <span className="cgroup__name">{g.name}</span>
-                          <span className="cgroup__count">{g.tasks.length}</span>
-                          <span className="cgroup__time">{fmtMinutes(g.tasks.reduce((a, t) => a + t.estimatedMinutes, 0))}</span>
-                        </header>
-                        {g.tasks.map(task => {
-                          const expanded = expandedTaskId === task.id;
-                          return (
-                            <div key={task.id} className="task-wrap">
-                              <TaskRow task={task} clients={clients} team={teamMembers}
-                                onToggle={handleToggleTask} ungrouped={false}
-                                onExpand={() => toggleExpand(task.id)} expanded={expanded} />
-                              {expanded && (
-                                <TaskDetail task={task} team={teamMembers}
-                                  currentUserName={accountName}
-                                  onUpdate={onUpdateTask}
-                                  onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))
+                    groupTasksByClient(d.tasks, clients).map(g => {
+                      const groupKey = `${d.day}_${g.key}`;
+                      const groupOpen = openClientGroups.has(groupKey);
+                      return (
+                        <div key={g.key} className="cgroup" data-open={groupOpen ? 'true' : 'false'}>
+                          <header className="cgroup__head" onClick={() => toggleClientGroup(groupKey)}>
+                            <span className="cgroup__dot" style={{ ['--cgroup-color' as any]: g.color } as React.CSSProperties} />
+                            <span className="cgroup__name">{g.name}</span>
+                            <span className="cgroup__count">{g.tasks.length}</span>
+                            <span className="cgroup__time">{fmtMinutes(g.tasks.reduce((a, t) => a + t.estimatedMinutes, 0))}</span>
+                            <span className="cgroup__chev"><Icon.ChevDown size={14} /></span>
+                          </header>
+                          {groupOpen && g.tasks.map(task => {
+                            const expanded = expandedTaskId === task.id;
+                            return (
+                              <div key={task.id} className="task-wrap">
+                                <TaskRow task={task} clients={clients} team={teamMembers}
+                                  onToggle={handleToggleTask} ungrouped={false}
+                                  onExpand={() => toggleExpand(task.id)} expanded={expanded} />
+                                {expanded && (
+                                  <TaskDetail task={task} team={teamMembers}
+                                    currentUserName={accountName}
+                                    onUpdate={onUpdateTask}
+                                    onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })
                   ) : (
                     d.tasks.map(task => {
                       const expanded = expandedTaskId === task.id;
@@ -910,7 +1185,21 @@ export default function SprintPlanner({
         </main>
 
         {prefs.showRightPanel && (
-          <aside className="right">
+          <aside className={'right' + (isMobile ? ' right--drawer' : '')}>
+            {isMobile && (
+              <button
+                onClick={() => setPref('showRightPanel', false)}
+                aria-label="Fechar"
+                style={{
+                  appearance: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                  position: 'absolute', top: 14, right: 14, zIndex: 1,
+                  background: 'var(--surface-2)', border: '1px solid var(--hairline)',
+                  color: 'var(--text)', width: 36, height: 36, borderRadius: '50%',
+                  display: 'grid', placeItems: 'center',
+                }}>
+                <Icon.X size={16} />
+              </button>
+            )}
             <div className="right__user glass">
               <span className="avatar">
                 {accountAvatar ? <img src={accountAvatar} alt="" /> : <span style={{

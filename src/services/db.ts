@@ -147,6 +147,16 @@ export const dbService = {
     } catch (e) { handleError(e, "Deletar Demanda"); }
   },
 
+  // Subscribe to all incomplete tasks across all weeks (used by Sprint overdue list).
+  // Client filters the cutoff so we don't need composite indices.
+  subscribeToIncompleteTasks: (callback: (tasks: WeeklyTask[]) => void) => {
+    const q = query(collection(db, TASKS_COLLECTION), where('completed', '==', false));
+    return onSnapshot(q, (snapshot) => {
+      const tasks = snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as WeeklyTask[];
+      callback(tasks);
+    }, (error) => handleError(error, "Listar Atrasadas"));
+  },
+
   // Batch update for reordering — escreve apenas o campo order para evitar
   // sobrescrever mudanças concorrentes (toggle completed durante drag, etc).
   reorderTasks: async (tasks: WeeklyTask[]) => {

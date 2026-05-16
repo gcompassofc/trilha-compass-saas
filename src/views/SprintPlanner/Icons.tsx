@@ -99,4 +99,7 @@ export const Icon = {
   Folder: ({ size = 14 }: IconProps) => wrap(
     <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />, size,
   ),
+  Plus: ({ size = 14 }: IconProps) => wrap(
+    <path d="M12 5v14M5 12h14" />, size, 2,
+  ),
 };
