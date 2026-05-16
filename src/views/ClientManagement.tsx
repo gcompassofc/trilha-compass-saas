@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save, ArrowUp, ArrowDown, Upload, Calendar, Package, Gift, Download } from 'lucide-react';
+import { Plus, Trash2, Building2, ChevronRight, ChevronLeft, Briefcase, Users, CheckCircle2, Circle, AlertCircle, User2, ListTodo, X, Edit2, Save, ArrowUp, ArrowDown, Upload, Calendar, Package, Gift, Download, Flame, Target } from 'lucide-react';
 import { compressImage } from '../utils/imageUtils';
 import { exportClientTasksToCSV } from '../utils/exportUtils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -289,28 +289,60 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
 
   const selectedClient = clients.find(c => c.id === selectedClientId);
 
+  const clientStats = (() => {
+    let totalOpen = 0;
+    let urgent = 0;
+    clients.forEach(c => {
+      c.masterTasks.forEach(t => {
+        if (!t.completed) {
+          totalOpen += 1;
+          if (t.priority === 'high') urgent += 1;
+        }
+      });
+    });
+    return { totalOpen, urgent };
+  })();
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="gc-heading">Gestão de Clientes</h1>
-          <p className="gc-subheading">Organize o backlog de demandas por projeto e as prioridades de cada cliente.</p>
+      <header className="gc-hero">
+        <div className="gc-hero__title-row">
+          <div className="flex flex-col gap-2">
+            <h1 className="gc-heading">Seus Clientes</h1>
+            <p className="gc-subheading">O que cada projeto está pedindo agora.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsImporterOpen(true)}
+              className="gc-button gc-button--ghost text-sm"
+            >
+              <Upload className="w-4 h-4" />
+              Importar
+            </button>
+            <button
+              onClick={() => exportClientTasksToCSV(clients, teamMembers)}
+              className="gc-button gc-button--ghost text-sm"
+            >
+              <Download className="w-4 h-4" />
+              Exportar
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsImporterOpen(true)}
-            className="gc-button gc-button--ghost text-sm"
-          >
-            <Upload className="w-4 h-4" />
-            Importar Texto
-          </button>
-          <button
-            onClick={() => exportClientTasksToCSV(clients, teamMembers)}
-            className="gc-button gc-button--ghost text-sm"
-          >
-            <Download className="w-4 h-4" />
-            Exportar Planilha
-          </button>
+        <div className="gc-hero__stats">
+          <div className="gc-hero-chip">
+            <span className="gc-hero-chip__icon"><Building2 className="w-3.5 h-3.5" /></span>
+            <span><strong>{clients.length}</strong> clientes</span>
+          </div>
+          <div className="gc-hero-chip gc-hero-chip--accent">
+            <span className="gc-hero-chip__icon"><Target className="w-3.5 h-3.5" /></span>
+            <span><strong>{clientStats.totalOpen}</strong> em aberto</span>
+          </div>
+          {clientStats.urgent > 0 && (
+            <div className="gc-hero-chip gc-hero-chip--danger">
+              <span className="gc-hero-chip__icon"><Flame className="w-3.5 h-3.5" /></span>
+              <span><strong>{clientStats.urgent}</strong> urgentes</span>
+            </div>
+          )}
         </div>
       </header>
 
@@ -373,58 +405,59 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
             </div>
           </div>
 
-          <div className="space-y-2">
-            {clients.map((client) => (
-              <motion.button
-                key={client.id}
-                layout
-                onClick={() => { setSelectedClientId(client.id); setIsEditingClient(false); }}
-                className={`w-full group flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
-                  selectedClientId === client.id 
-                    ? 'bg-indigo-600/10 border-indigo-500/50 shadow-[0_0_20px_rgba(79,70,229,0.15)]' 
-                    : 'bg-white/5 border-white/5 hover:border-white/10'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner border border-white/5 transition-all group-hover:scale-110 overflow-hidden"
-                    style={{ backgroundColor: `${client.color}20`, color: client.color, boxShadow: selectedClientId === client.id ? `0 0 15px ${client.color}40` : 'none' }}
+          <div className="space-y-3">
+            {clients.map((client) => {
+              const open = client.masterTasks.filter(t => !t.completed);
+              const urgent = open.filter(t => t.priority === 'high').length;
+              return (
+                <motion.button
+                  key={client.id}
+                  layout
+                  onClick={() => { setSelectedClientId(client.id); setIsEditingClient(false); }}
+                  className="gc-mission group"
+                  data-active={selectedClientId === client.id || undefined}
+                >
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-inner border border-white/5 transition-all group-hover:scale-105 overflow-hidden flex-shrink-0"
+                    style={{ backgroundColor: `${client.color}20`, color: client.color }}
                   >
                     {client.logoUrl ? <img src={client.logoUrl} className="w-full h-full object-cover" /> : client.logo}
                   </div>
-                  <div className="text-left">
-                    <h3 className={`font-bold transition-colors ${selectedClientId === client.id ? 'text-white' : 'text-slate-300'}`}>
-                      {client.name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`text-[9px] font-black uppercase tracking-widest ${selectedClientId === client.id ? 'text-indigo-400' : 'text-slate-500'}`}>
-                        {client.masterTasks.filter(t => !t.completed).length} pendentes
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-slate-100 truncate">{client.name}</h3>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-[11px] text-slate-400">
+                        <strong className="text-slate-200">{open.length}</strong> em aberto
                       </span>
+                      {urgent > 0 && (
+                        <span className="gc-pill" style={{ background: 'rgba(251, 113, 133, 0.12)', color: 'var(--gc-danger)', borderColor: 'rgba(251, 113, 133, 0.3)' }}>
+                          {urgent} urgente{urgent > 1 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col gap-1 mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div 
-                      onClick={(e) => handleMoveClient(clients.indexOf(client), 'up', e)}
-                      className="p-1 rounded bg-white/5 hover:bg-white/20 text-slate-400 hover:text-white transition-colors"
-                      style={{ visibility: clients.indexOf(client) === 0 ? 'hidden' : 'visible' }}
-                    >
-                      <ArrowUp className="w-3 h-3" />
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-1 mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div
+                        onClick={(e) => handleMoveClient(clients.indexOf(client), 'up', e)}
+                        className="p-1 rounded bg-white/5 hover:bg-white/20 text-slate-400 hover:text-white transition-colors"
+                        style={{ visibility: clients.indexOf(client) === 0 ? 'hidden' : 'visible' }}
+                      >
+                        <ArrowUp className="w-3 h-3" />
+                      </div>
+                      <div
+                        onClick={(e) => handleMoveClient(clients.indexOf(client), 'down', e)}
+                        className="p-1 rounded bg-white/5 hover:bg-white/20 text-slate-400 hover:text-white transition-colors"
+                        style={{ visibility: clients.indexOf(client) === clients.length - 1 ? 'hidden' : 'visible' }}
+                      >
+                        <ArrowDown className="w-3 h-3" />
+                      </div>
                     </div>
-                    <div 
-                      onClick={(e) => handleMoveClient(clients.indexOf(client), 'down', e)}
-                      className="p-1 rounded bg-white/5 hover:bg-white/20 text-slate-400 hover:text-white transition-colors"
-                      style={{ visibility: clients.indexOf(client) === clients.length - 1 ? 'hidden' : 'visible' }}
-                    >
-                      <ArrowDown className="w-3 h-3" />
-                    </div>
+                    <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1 text-slate-500 group-hover:text-indigo-400" />
                   </div>
-                  <ChevronRight className={`w-4 h-4 transition-transform ${selectedClientId === client.id ? 'translate-x-1 text-indigo-400' : 'text-slate-600'}`} />
-                </div>
-
-              </motion.button>
-            ))}
+                </motion.button>
+              );
+            })}
             </div>
           </div>
       ) : (

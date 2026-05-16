@@ -1168,8 +1168,6 @@ export default function SprintPlanner({
 
   return (
     <div ref={scopeRef} className="sprint-scope">
-      <div className="bg-orbs"><span /></div>
-
       <div className="shell" style={isMobile ? undefined : { gridTemplateColumns: prefs.showRightPanel ? `0 1fr var(--right-w)` : `0 1fr` }}>
         {!isMobile && <div />}
 

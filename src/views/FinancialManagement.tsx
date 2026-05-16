@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
   Wallet,
   Plus,
   Filter,
@@ -15,7 +15,8 @@ import {
   PieChart,
   Edit2,
   Trash2,
-  Briefcase
+  Briefcase,
+  Clock
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -210,13 +211,44 @@ export default function FinancialManagement({
     <div className="space-y-6 animate-in fade-in duration-500">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="gc-heading">Gestão Financeira</h1>
-          <p className="gc-subheading mt-1">Acompanhamento de fluxo de caixa, custos operacionais e retiradas.</p>
+      <header className="gc-hero">
+        <div className="gc-hero__title-row">
+          <div>
+            <h1 className="gc-heading">Suas Finanças</h1>
+            <p className="gc-subheading mt-1">Onde está o dinheiro entrando e saindo.</p>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="gc-button text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Nova Movimentação
+            </button>
+          </div>
         </div>
-        
-        <div className="flex items-center gap-3">
+
+        {viewMode === 'dashboard' && (
+          <div className="gc-hero__stats">
+            <div className="gc-hero-chip gc-hero-chip--success">
+              <span className="gc-hero-chip__icon"><TrendingUp className="w-3.5 h-3.5" /></span>
+              <span><strong>{formatCurrency(stats.totalEntradas)}</strong> entradas</span>
+            </div>
+            <div className={`gc-hero-chip ${stats.saldoLivre >= 0 ? 'gc-hero-chip--accent' : 'gc-hero-chip--danger'}`}>
+              <span className="gc-hero-chip__icon"><DollarSign className="w-3.5 h-3.5" /></span>
+              <span><strong>{formatCurrency(stats.saldoLivre)}</strong> saldo livre</span>
+            </div>
+            {pendingInRange.length > 0 && (
+              <div className="gc-hero-chip gc-hero-chip--warning">
+                <span className="gc-hero-chip__icon"><Clock className="w-3.5 h-3.5" /></span>
+                <span><strong>{pendingInRange.length}</strong> pendentes</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="gc-segmented hidden md:inline-flex">
             <button
               onClick={() => setViewMode('dashboard')}
@@ -274,15 +306,8 @@ export default function FinancialManagement({
               )}
             </div>
           )}
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="gc-button text-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Nova Movimentação
-          </button>
         </div>
-      </div>
+      </header>
 
       {viewMode === 'dashboard' ? (
         <>
@@ -492,7 +517,7 @@ export default function FinancialManagement({
               const isPending = t.status === 'pending';
 
               return (
-                <div key={t.id} className={`border rounded-xl p-3 flex flex-col gap-3 group transition-colors ${isPending ? 'bg-white/[0.02] border-white/5 opacity-70' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                <div key={t.id} className={`gc-mission flex-col items-stretch !p-4 group ${isPending ? 'opacity-70' : ''}`} style={{ cursor: 'default' }}>
                   <div className="flex justify-between items-start gap-2">
                     <div className="flex items-start gap-3">
                       <button

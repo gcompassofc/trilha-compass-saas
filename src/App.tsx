@@ -373,8 +373,7 @@ export default function App() {
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen plasma-bg overflow-hidden">
-      <div className="fixed top-[-10%] left-[-5%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
-      <div className="fixed bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="gc-bg-orbs" aria-hidden="true" />
 
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
@@ -388,7 +387,7 @@ export default function App() {
         teamMembers={teamMembers} 
       />
 
-      <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-hidden flex flex-col h-[100dvh] md:h-screen relative z-10 transition-all duration-500">
+      <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-hidden flex flex-col h-[100dvh] md:h-screen relative z-10">
         <div className="flex justify-between items-center mb-4">
           <button
             onClick={() => setIsSearchOpen(true)}
@@ -464,8 +463,10 @@ export default function App() {
               transition={{ duration: 0.3 }}
               className="flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar pr-2 pb-8"
             >
-              <TeamManagement 
+              <TeamManagement
                 teamMembers={teamMembers}
+                clients={clients}
+                weeklyTasks={weeklyTasks}
               />
             </motion.div>
           )}

@@ -2,16 +2,18 @@ import { useState, useRef } from 'react';
 import { Plus, Trash2, Users, Image as ImageIcon, X, Edit2, Check, Upload } from 'lucide-react';
 import { compressImage } from '../utils/imageUtils';
 import { motion, AnimatePresence } from 'motion/react';
-import { TeamMember } from '../types';
+import { TeamMember, Client, WeeklyTask } from '../types';
 import GlassCard from '../components/GlassCard';
 import { dbService } from '../services/db';
 import { toast } from '../components/Toast';
 
 interface TeamManagementProps {
   teamMembers: TeamMember[];
+  clients?: Client[];
+  weeklyTasks?: WeeklyTask[];
 }
 
-export default function TeamManagement({ teamMembers }: TeamManagementProps) {
+export default function TeamManagement({ teamMembers, clients = [], weeklyTasks = [] }: TeamManagementProps) {
   const [name, setName] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -59,11 +61,43 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
     }
   };
 
+  const memberStats = (() => {
+    const idsWithTasks = new Set<string>();
+    let totalAssignments = 0;
+    weeklyTasks.forEach(t => {
+      const resps = t.responsibles || (t.responsible ? [t.responsible] : []);
+      resps.forEach(r => { idsWithTasks.add(r); totalAssignments += 1; });
+    });
+    clients.forEach(c => {
+      c.masterTasks.forEach(t => {
+        const resps = t.responsibles || (t.responsible ? [t.responsible] : []);
+        resps.forEach(r => { idsWithTasks.add(r); });
+      });
+    });
+    return { active: idsWithTasks.size, assignments: totalAssignments };
+  })();
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
-      <header className="flex flex-col gap-2">
-        <h1 className="gc-heading">Equipe</h1>
-        <p className="gc-subheading">Gerencie os responsáveis pelas demandas do projeto.</p>
+      <header className="gc-hero">
+        <div className="gc-hero__title-row">
+          <div className="flex flex-col gap-2">
+            <h1 className="gc-heading">Seu Time</h1>
+            <p className="gc-subheading">Quem está nessa com você.</p>
+          </div>
+        </div>
+        <div className="gc-hero__stats">
+          <div className="gc-hero-chip">
+            <span className="gc-hero-chip__icon"><Users className="w-3.5 h-3.5" /></span>
+            <span><strong>{teamMembers.length}</strong> membros</span>
+          </div>
+          {memberStats.assignments > 0 && (
+            <div className="gc-hero-chip gc-hero-chip--accent">
+              <span className="gc-hero-chip__icon"><Users className="w-3.5 h-3.5" /></span>
+              <span><strong>{memberStats.assignments}</strong> tarefas atribuídas</span>
+            </div>
+          )}
+        </div>
       </header>
 
       <GlassCard className="p-8">
@@ -137,9 +171,9 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className={`flex items-center justify-between p-4 rounded-2xl border transition-all group ${
-                    editingId === member.id ? 'bg-indigo-500/10 border-indigo-500/30' : 'gc-panel'
-                  }`}
+                  className="gc-mission justify-between group"
+                  data-active={editingId === member.id || undefined}
+                  style={{ cursor: 'default' }}
                 >
                   <div className="flex items-center gap-4">
                     {member.photoUrl ? (

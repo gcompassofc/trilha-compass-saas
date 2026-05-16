@@ -335,6 +335,116 @@
   .gc-table tbody tr:hover { background: var(--gc-surface); }
   .gc-table tbody td { padding: 10px 8px; color: var(--gc-text-2); }
 
+  /* Background orbs: dois blurs grandes ancorados na viewport.
+     Pintado no nível do <body> pra evitar bug do position:fixed
+     quando o ancestral tem transform (caso do AnimatePresence). */
+  .gc-bg-orbs {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .gc-bg-orbs::before {
+    content: "";
+    position: absolute;
+    width: 620px; height: 620px;
+    border-radius: 50%;
+    background: var(--gc-accent);
+    filter: blur(150px);
+    opacity: .28;
+    top: -160px; left: -100px;
+  }
+  .gc-bg-orbs::after {
+    content: "";
+    position: absolute;
+    width: 720px; height: 720px;
+    border-radius: 50%;
+    background: var(--gc-accent-2);
+    filter: blur(170px);
+    opacity: .22;
+    bottom: -240px; right: -180px;
+  }
+
+  /* Hero header de cada view (título grande + linha de chips de stat) */
+  .gc-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .gc-hero__title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .gc-hero__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .gc-hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: var(--gc-surface);
+    border: 1px solid var(--gc-hairline);
+    font-size: 13px;
+    color: var(--gc-text-2);
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .gc-hero-chip:hover { border-color: var(--gc-hairline-strong); background: var(--gc-surface-2); }
+  .gc-hero-chip__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 24px; height: 24px;
+    border-radius: 999px;
+    background: var(--gc-accent-soft);
+    color: var(--gc-accent);
+  }
+  .gc-hero-chip strong { color: var(--gc-text); font-weight: 700; }
+  .gc-hero-chip--success .gc-hero-chip__icon { background: rgba(52, 211, 153, 0.14); color: var(--gc-success); }
+  .gc-hero-chip--warning .gc-hero-chip__icon { background: rgba(251, 191, 36, 0.14); color: var(--gc-warning); }
+  .gc-hero-chip--danger  .gc-hero-chip__icon { background: rgba(251, 113, 133, 0.14); color: var(--gc-danger); }
+  .gc-hero-chip--accent  .gc-hero-chip__icon { background: rgba(168, 85, 247, 0.14); color: var(--gc-accent-2); }
+
+  /* Mission card: card alto com hover gradient, usado para items principais (clientes, transações) */
+  .gc-mission {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+    border-radius: var(--gc-radius-lg);
+    background: var(--gc-surface);
+    border: 1px solid var(--gc-hairline);
+    transition: border-color .2s ease, background .2s ease, transform .15s ease;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+  }
+  .gc-mission::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, var(--gc-accent-soft), rgba(168, 85, 247, 0.08));
+    opacity: 0;
+    transition: opacity .2s ease;
+    pointer-events: none;
+  }
+  .gc-mission:hover { border-color: var(--gc-hairline-strong); transform: translateY(-1px); }
+  .gc-mission:hover::before { opacity: 1; }
+  .gc-mission[data-active="true"] {
+    border-color: rgba(99, 102, 241, 0.4);
+    background: linear-gradient(135deg, var(--gc-accent-soft), rgba(168, 85, 247, 0.1));
+  }
+  .gc-mission > * { position: relative; z-index: 1; }
+
   /* Priority pill helpers (compatível com paleta Sprint) */
   .gc-pill {
     display: inline-flex; align-items: center; gap: 4px;
