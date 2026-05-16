@@ -62,8 +62,8 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl md:text-4xl font-bold prisma-text">Equipe</h1>
-        <p className="text-slate-400 font-light">Gerencie os responsáveis pelas demandas do projeto.</p>
+        <h1 className="gc-heading">Equipe</h1>
+        <p className="gc-subheading">Gerencie os responsáveis pelas demandas do projeto.</p>
       </header>
 
       <GlassCard className="p-8">
@@ -73,25 +73,25 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
               {editingId ? 'Editar Membro' : 'Novo Membro'}
             </h2>
             {editingId && (
-              <button onClick={resetForm} className="text-xs flex items-center gap-1 text-slate-400 hover:text-white bg-white/5 px-3 py-1.5 rounded-lg transition-colors">
+              <button onClick={resetForm} className="gc-chip text-xs">
                 <X className="w-3 h-3" /> Cancelar Edição
               </button>
             )}
           </div>
           <div className="flex flex-col md:flex-row gap-4 items-start">
-            <div className="flex-1 space-y-2 w-full">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Nome do Membro</label>
+            <div className="flex-1 w-full">
+              <label className="gc-label">Nome do Membro</label>
               <input
                 type="text"
                 placeholder="Ex: Kallyl Bertolino"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveMember()}
-                className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                className="gc-input"
               />
             </div>
-            <div className="flex-1 space-y-2 w-full">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Foto (URL ou Upload)</label>
+            <div className="flex-1 w-full">
+              <label className="gc-label">Foto (URL ou Upload)</label>
               <div className="flex gap-2 relative items-center">
                 <input
                   type="text"
@@ -99,14 +99,14 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
                   value={photoUrl}
                   onChange={(e) => setPhotoUrl(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveMember()}
-                  className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 pr-10"
+                  className="gc-input pr-10"
                 />
                 <label className="absolute right-14 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors text-slate-400 hover:text-white" title="Fazer upload de imagem">
                   <Upload className="w-4 h-4" />
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
                     onChange={async (e) => {
                       if (e.target.files && e.target.files[0]) {
                         try {
@@ -116,12 +116,12 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
                           console.error(err);
                         }
                       }
-                    }} 
+                    }}
                   />
                 </label>
-                <button 
+                <button
                   onClick={handleSaveMember}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center min-w-[50px]"
+                  className="gc-button min-w-[50px]"
                 >
                   {editingId ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                 </button>
@@ -152,14 +152,14 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
                     <span className="font-medium text-slate-200">{member.name}</span>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                    <button 
+                    <button
                       onClick={() => handleEditClick(member)}
                       className="p-2 text-slate-400 hover:text-indigo-400 transition-all"
                       title="Editar"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleDeleteMember(member.id)}
                       className="p-2 text-slate-400 hover:text-rose-500 transition-all"
                       title="Excluir"
@@ -170,7 +170,7 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
                 </motion.div>
               ))}
             </AnimatePresence>
-            
+
             {teamMembers.length === 0 && (
               <div className="col-span-2 text-center py-12 border-2 border-dashed border-white/5 rounded-3xl">
                 <Users className="w-12 h-12 text-slate-600 mx-auto mb-3 opacity-20" />

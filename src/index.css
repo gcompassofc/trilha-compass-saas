@@ -6,6 +6,40 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* ── Design tokens (globals) ─────────────────────────────────────────────
+   Shared visual language with the Sprint Planner. The .sprint-scope block
+   in sprint.css overrides where needed, so this stays risk-free for it. */
+:root {
+  --gc-accent: #6366f1;
+  --gc-accent-2: #a855f7;
+  --gc-accent-3: #ec4899;
+  --gc-accent-soft: rgba(99, 102, 241, 0.14);
+  --gc-accent-glow: rgba(99, 102, 241, 0.4);
+
+  --gc-surface: rgba(255, 255, 255, 0.04);
+  --gc-surface-2: rgba(255, 255, 255, 0.07);
+  --gc-surface-3: rgba(255, 255, 255, 0.11);
+  --gc-hairline: rgba(255, 255, 255, 0.08);
+  --gc-hairline-strong: rgba(255, 255, 255, 0.16);
+
+  --gc-text: #f1f5fd;
+  --gc-text-2: #c4cce4;
+  --gc-text-3: #8590b3;
+  --gc-text-4: #5d6890;
+
+  --gc-success: #34d399;
+  --gc-warning: #fbbf24;
+  --gc-danger: #fb7185;
+
+  --gc-radius-sm: 10px;
+  --gc-radius: 14px;
+  --gc-radius-lg: 20px;
+  --gc-radius-xl: 28px;
+
+  --gc-blur: 22px;
+  --gc-shadow-glass: 0 1px 0 rgba(255,255,255,0.08) inset, 0 1px 24px rgba(0,0,0,0.18), 0 24px 60px -20px rgba(0,0,0,0.5);
+}
+
 @layer base {
   body {
     @apply bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500/30;
@@ -36,7 +70,11 @@
   }
 
   .prisma-text {
-    @apply bg-gradient-to-br from-white via-slate-200 to-slate-500 bg-clip-text text-transparent;
+    background: linear-gradient(135deg, #ffffff 0%, #c4cce4 45%, var(--gc-accent-2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -0.02em;
   }
 
   .plasma-bg {
@@ -59,5 +97,131 @@
 
   .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
+  }
+
+  /* ── gc-* design system (paired with sprint planner) ──────────────── */
+  .gc-card {
+    background: var(--gc-surface);
+    backdrop-filter: blur(var(--gc-blur));
+    -webkit-backdrop-filter: blur(var(--gc-blur));
+    border: 1px solid var(--gc-hairline);
+    border-radius: var(--gc-radius-lg);
+    box-shadow: var(--gc-shadow-glass);
+    padding: 24px;
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .gc-card:hover {
+    border-color: var(--gc-hairline-strong);
+  }
+  .gc-card--flat { box-shadow: none; }
+  .gc-card--tight { padding: 16px; }
+
+  .gc-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gc-text-3);
+    margin-bottom: 10px;
+  }
+
+  .gc-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--gc-surface);
+    border: 1px solid var(--gc-hairline);
+    color: var(--gc-text-2);
+    font-size: 12.5px; font-weight: 500;
+    transition: transform .15s ease, background .15s ease, border-color .15s ease;
+    cursor: pointer;
+  }
+  .gc-chip:hover { transform: translateY(-1px); background: var(--gc-surface-2); border-color: var(--gc-hairline-strong); }
+  .gc-chip[data-active="true"] {
+    background: linear-gradient(135deg, var(--gc-accent-soft), rgba(168, 85, 247, 0.1));
+    border-color: rgba(99, 102, 241, 0.35);
+    color: var(--gc-text);
+  }
+
+  .gc-button {
+    appearance: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 13.5px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    border: 0;
+    color: #fff;
+    background: linear-gradient(135deg, var(--gc-accent), var(--gc-accent-2));
+    box-shadow: 0 4px 16px -4px var(--gc-accent-glow);
+    transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+    display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+  }
+  .gc-button:hover { transform: translateY(-1px); box-shadow: 0 8px 24px -6px var(--gc-accent-glow); filter: brightness(1.08); }
+  .gc-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
+  .gc-button--ghost {
+    background: var(--gc-surface);
+    color: var(--gc-text-2);
+    border: 1px solid var(--gc-hairline);
+    box-shadow: none;
+  }
+  .gc-button--ghost:hover { background: var(--gc-surface-2); color: var(--gc-text); filter: none; }
+  .gc-button--danger {
+    background: linear-gradient(135deg, #f43f5e, #e11d48);
+    box-shadow: 0 4px 16px -4px rgba(244, 63, 94, 0.45);
+  }
+
+  .gc-input {
+    width: 100%;
+    background: var(--gc-surface);
+    border: 1px solid var(--gc-hairline);
+    color: var(--gc-text);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    outline: none;
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .gc-input:hover { background: var(--gc-surface-2); }
+  .gc-input:focus {
+    border-color: rgba(99, 102, 241, 0.55);
+    background: var(--gc-surface-2);
+    box-shadow: 0 0 0 3px var(--gc-accent-soft);
+  }
+  .gc-input::placeholder { color: var(--gc-text-4); }
+
+  .gc-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--gc-text-3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .gc-divider {
+    height: 1px;
+    background: var(--gc-hairline);
+    margin: 16px 0;
+    border: 0;
+  }
+
+  .gc-heading {
+    font-size: clamp(24px, 3.4vw, 36px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #ffffff 0%, #c4cce4 50%, var(--gc-accent-2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .gc-subheading {
+    color: var(--gc-text-3);
+    font-weight: 400;
+    font-size: 14px;
+    letter-spacing: 0.01em;
   }
 }

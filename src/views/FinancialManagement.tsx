@@ -212,8 +212,8 @@ export default function FinancialManagement({
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Gestão Financeira</h1>
-          <p className="text-slate-400 text-sm mt-1">Acompanhamento de fluxo de caixa, custos operacionais e retiradas.</p>
+          <h1 className="gc-heading">Gestão Financeira</h1>
+          <p className="gc-subheading mt-1">Acompanhamento de fluxo de caixa, custos operacionais e retiradas.</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -274,9 +274,9 @@ export default function FinancialManagement({
               )}
             </div>
           )}
-          <button 
+          <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg shadow-indigo-500/20"
+            className="gc-button text-sm"
           >
             <Plus className="w-4 h-4" />
             Nova Movimentação
@@ -826,10 +826,10 @@ function TransactionModal({
           </div>
 
           <div className="flex gap-3 pt-6">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 font-medium transition-colors">
+            <button type="button" onClick={onClose} className="gc-button gc-button--ghost flex-1">
               Cancelar
             </button>
-            <button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-medium transition-colors">
+            <button type="submit" className="gc-button flex-1">
               Salvar
             </button>
           </div>
