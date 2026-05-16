@@ -2069,3 +2069,74 @@
   .focus-band { font-size: 12.5px; }
   .focus-band__text { font-size: 13px; }
 }
+
+/* ── Ranking tabs ──────────────────────────────────────────────────────── */
+.rank-tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--hairline, rgba(255,255,255,0.1));
+  border-radius: 999px;
+  padding: 3px;
+}
+.rank-tabs button {
+  appearance: none; cursor: pointer; font-family: inherit;
+  background: transparent; border: none;
+  color: var(--text-3, rgba(255,255,255,0.55));
+  font-size: 12px; font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  transition: background .15s ease, color .15s ease;
+}
+.rank-tabs button[data-active="true"] {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+}
+.rank-tabs button:hover:not([data-active="true"]) {
+  color: var(--text, #fff);
+}
+
+/* ── Badges ────────────────────────────────────────────────────────────── */
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.badge {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 4px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--hairline, rgba(255,255,255,0.08));
+  text-align: center;
+  transition: transform .15s ease, background .15s ease;
+}
+.badge[data-owned="false"] {
+  opacity: 0.32;
+  filter: grayscale(1);
+}
+.badge[data-owned="true"]:hover {
+  transform: translateY(-2px);
+  background: rgba(99, 102, 241, 0.08);
+}
+.badge__icon { font-size: 22px; line-height: 1; }
+.badge__name { font-size: 10.5px; font-weight: 600; color: var(--text-2, rgba(255,255,255,0.78)); line-height: 1.2; }
+
+/* ── Stats ─────────────────────────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.stat {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--hairline, rgba(255,255,255,0.08));
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.stat__num { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--text, #fff); }
+.stat__lbl { font-size: 10.5px; color: var(--text-3, rgba(255,255,255,0.55)); margin-top: 2px; line-height: 1.2; }

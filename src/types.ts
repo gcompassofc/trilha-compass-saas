@@ -85,6 +85,8 @@ export interface UserGamification {
   bestStreak?: number;
   comboCount?: number;
   comboExpiresAt?: number; // timestamp ms
+  badges?: string[]; // ids dos badges conquistados
+  completedMissions?: string[]; // chave "weekId:missionId" para evitar pagamento duplo
 }
 
 export interface SprintFocus {

@@ -3,7 +3,7 @@ import { User } from 'firebase/auth';
 import { Client, DayOfWeek, SprintFocus, SubTask, TaskComment, TaskKind, TaskType, TeamMember, UserGamification, WeeklyTask } from '../../types';
 import { Icon } from './Icons';
 import { buildRanking, clientById, SprintDayView, SprintTaskView, toSprintWeek, toTaskView } from './adapter';
-import { COMBO_TTL_MS, DEFAULT_DAILY_GOAL, focusKeywords, fmtMinutes, levelFromXp, parseTimeText, playPing, rewardForTask, spawnXPFloater, taskMatchesFocus, todayISO, daysBetween } from './utils';
+import { BADGES, badgeById, COMBO_TTL_MS, DEFAULT_DAILY_GOAL, focusKeywords, fmtMinutes, levelFromXp, newlyEarnedBadges, parseTimeText, playPing, rewardForTask, spawnXPFloater, taskMatchesFocus, todayISO, daysBetween } from './utils';
 import Timer from '../../components/Timer';
 import EstimatedTimePicker from '../../components/EstimatedTimePicker';
 import './sprint.css';
@@ -520,17 +520,24 @@ function groupTasksByClient(tasks: SprintTaskView[], clients: Client[]): ClientG
 }
 
 // ── Ranking ─────────────────────────────────────────────────────────────────
-function RankingCard({ rows, youId }: {
+function RankingCard({ rows, youId, mode, onModeChange }: {
   rows: { member: TeamMember; done: number; total: number; xp: number; streak: number }[];
   youId?: string;
+  mode: 'week' | 'all';
+  onModeChange: (m: 'week' | 'all') => void;
 }) {
+  const sorted = [...rows].sort((a, b) => mode === 'week' ? (b.done - a.done) : (b.xp - a.xp));
   return (
     <section className="card glass">
       <h3 className="card__title">
         <span>Ranking do time</span>
         <span className="icon"><Icon.Trophy size={18} /></span>
       </h3>
-      {rows.map((r, i) => {
+      <div className="rank-tabs" role="tablist" aria-label="Período do ranking">
+        <button role="tab" aria-selected={mode === 'week'} data-active={mode === 'week'} onClick={() => onModeChange('week')}>Esta semana</button>
+        <button role="tab" aria-selected={mode === 'all'} data-active={mode === 'all'} onClick={() => onModeChange('all')}>Geral</button>
+      </div>
+      {sorted.map((r, i) => {
         const initials = r.member.name.split(' ').slice(0, 2).map(s => s[0]).join('').toUpperCase();
         const isYou = youId && r.member.id === youId;
         return (
@@ -550,17 +557,58 @@ function RankingCard({ rows, youId }: {
               </div>
             </div>
             <div className="rank__pts">
-              {r.xp}
-              <em>XP</em>
+              {mode === 'week' ? r.done : r.xp}
+              <em>{mode === 'week' ? 'feitas' : 'XP'}</em>
             </div>
           </div>
         );
       })}
-      {rows.length === 0 && (
+      {sorted.length === 0 && (
         <div style={{ padding: '12px 0', fontSize: 13, color: 'var(--text-3)' }}>
           Adicione membros da equipe para ver o ranking.
         </div>
       )}
+    </section>
+  );
+}
+
+// ── Badges ─────────────────────────────────────────────────────────────────
+function BadgesCard({ owned }: { owned: string[] }) {
+  const ownedSet = new Set(owned);
+  return (
+    <section className="card glass">
+      <h3 className="card__title">
+        <span>Conquistas</span>
+        <span className="icon"><Icon.Sparkle size={18} /></span>
+      </h3>
+      <div className="badges-grid">
+        {BADGES.map(b => {
+          const has = ownedSet.has(b.id);
+          return (
+            <div key={b.id} className="badge" data-owned={has ? 'true' : 'false'} title={b.description}>
+              <div className="badge__icon">{b.icon}</div>
+              <div className="badge__name">{b.name}</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+function StatsCard({ totalCompleted, bestStreak, xp }: { totalCompleted: number; bestStreak: number; xp: number }) {
+  return (
+    <section className="card glass">
+      <h3 className="card__title">
+        <span>Estatísticas</span>
+        <span className="icon"><Icon.Trophy size={18} /></span>
+      </h3>
+      <div className="stats-grid">
+        <div className="stat"><div className="stat__num">{totalCompleted}</div><div className="stat__lbl">tarefas concluídas</div></div>
+        <div className="stat"><div className="stat__num">{bestStreak}</div><div className="stat__lbl">recorde de streak</div></div>
+        <div className="stat"><div className="stat__num">{xp}</div><div className="stat__lbl">XP total</div></div>
+      </div>
     </section>
   );
 }
@@ -576,7 +624,7 @@ interface Mission {
   icon: React.ReactNode;
 }
 
-function MissionsCard({ missions }: { missions: Mission[] }) {
+function MissionsCard({ missions, paid }: { missions: Mission[]; paid: Set<string> }) {
   return (
     <section className="card glass">
       <h3 className="card__title">
@@ -586,6 +634,7 @@ function MissionsCard({ missions }: { missions: Mission[] }) {
       {missions.map(m => {
         const pct = Math.min(100, (m.progress / m.target) * 100);
         const done = m.progress >= m.target;
+        const wasPaid = paid.has(m.id);
         return (
           <div key={m.id} className="mission" data-done={done ? 'true' : 'false'}>
             <div className="mission__icon">
@@ -593,7 +642,10 @@ function MissionsCard({ missions }: { missions: Mission[] }) {
             </div>
             <div>
               <div className="mission__title">{m.title}</div>
-              <div className="mission__sub">{m.progress}/{m.target} · {m.sub}</div>
+              <div className="mission__sub">
+                {m.progress}/{m.target} · {m.sub}
+                {wasPaid && <span style={{ marginLeft: 8, color: '#34d399', fontWeight: 600 }}>· recompensa creditada</span>}
+              </div>
               <div className="mission__progress"><span style={{ width: `${pct}%` }} /></div>
             </div>
             <div className="mission__pts">
@@ -937,30 +989,56 @@ export default function SprintPlanner({
     const newLevel = levelFromXp(newXp).level;
     const leveledUp = newLevel > prevLevel;
 
+    // Avaliação de badges com o ESTADO NOVO (pós-update)
+    const newTotal = (myG.totalCompleted ?? 0) + 1;
+    const newBestStreak = Math.max(myG.bestStreak ?? 0, nextStreak);
+    const earned = newlyEarnedBadges(
+      { xp: newXp, level: newLevel, streak: nextStreak, totalCompleted: newTotal, bestStreak: newBestStreak, comboCount: newCombo },
+      myG.badges ?? [],
+    );
+    const allBadges = [...(myG.badges ?? []), ...earned];
+
     onUpdateGamification({
       userId: user.uid,
       xp: newXp,
       level: newLevel,
       streak: nextStreak,
       lastActiveDate: nextLastActive,
-      totalCompleted: (myG.totalCompleted ?? 0) + 1,
+      totalCompleted: newTotal,
       dailyGoal: goal,
       dailyCompleted: newDailyCompleted,
       dailyCountedDate: today,
-      bestStreak: Math.max(myG.bestStreak ?? 0, nextStreak),
+      bestStreak: newBestStreak,
       comboCount: newCombo,
       comboExpiresAt: now + COMBO_TTL_MS,
+      badges: allBadges,
+      completedMissions: myG.completedMissions,
     });
 
     if (prefs.confetti) setConfettiSeed(Date.now());
     if (prefs.sound) playPing();
     const rect = (ev.target as HTMLElement).getBoundingClientRect();
     spawnXPFloater(rect, reward);
-    setNice({
-      xp: reward,
-      combo: newCombo,
-      bonus: leveledUp ? `Subiu para o Nv. ${newLevel}!` : reachedGoalNow ? `Streak ${nextStreak}🔥` : bonusLabel,
-    });
+
+    // Prioridade do "bonus label" no popup: badge > level-up > streak > foco
+    let popupBonus = bonusLabel;
+    if (earned.length) {
+      const b = badgeById(earned[0]);
+      if (b) popupBonus = `Novo badge: ${b.icon} ${b.name}`;
+    } else if (leveledUp) {
+      popupBonus = `Subiu para o Nv. ${newLevel}!`;
+    } else if (reachedGoalNow) {
+      popupBonus = `Streak ${nextStreak}🔥`;
+    }
+
+    setNice({ xp: reward, combo: newCombo, bonus: popupBonus });
+    if (earned.length > 1) {
+      // Empilha o segundo+ badges como toasts simples (1 por vez via setNice — substitui depois de 2.2s)
+      setTimeout(() => {
+        const b = badgeById(earned[1]);
+        if (b) setNice({ xp: 0, combo: 0, bonus: `Novo badge: ${b.icon} ${b.name}` });
+      }, 2300);
+    }
   }, [onUpdateTask, onUpdateGamification, myG, user.uid, prefs.confetti, prefs.sound, focusKW]);
 
   // Filters active?
@@ -996,6 +1074,44 @@ export default function SprintPlanner({
     ];
   }, [allVisibleTasks, sprintDays, myG.streak, currentCombo]);
 
+  // Missões pagas (set rápido)
+  const paidMissions = useMemo(() => {
+    const s = new Set<string>();
+    for (const k of myG.completedMissions ?? []) {
+      const [wk, mid] = k.split(':');
+      if (wk === currentWeekId && mid) s.add(mid);
+    }
+    return s;
+  }, [myG.completedMissions, currentWeekId]);
+
+  // Auto-credita missões completas que ainda não foram pagas (1 update por trigger).
+  useEffect(() => {
+    const toPay = missions.filter(m => m.progress >= m.target && !paidMissions.has(m.id));
+    if (!toPay.length) return;
+    const addedXp = toPay.reduce((a, m) => a + m.xp, 0);
+    const newKeys = toPay.map(m => `${currentWeekId}:${m.id}`);
+    const newXp = (myG.xp ?? 0) + addedXp;
+    const prevLevel = levelFromXp(myG.xp ?? 0).level;
+    const newLevel = levelFromXp(newXp).level;
+    onUpdateGamification({
+      ...myG,
+      userId: user.uid,
+      xp: newXp,
+      level: newLevel,
+      completedMissions: [...(myG.completedMissions ?? []), ...newKeys],
+    });
+    // Toast simples — só uma linha agregada para não spammar
+    const first = toPay[0];
+    setNice({
+      xp: addedXp,
+      combo: 0,
+      bonus: toPay.length === 1
+        ? `Missão concluída: ${first.title}`
+        : `${toPay.length} missões concluídas`,
+    });
+    if (newLevel > prevLevel && prefs.sound) playPing();
+  }, [missions, paidMissions, currentWeekId, myG, user.uid, onUpdateGamification, prefs.sound]);
+
   // Account info (header / right panel user card)
   const accountName = user.displayName || user.email?.split('@')[0] || 'Você';
   const accountEmail = user.email || '';
@@ -1003,6 +1119,12 @@ export default function SprintPlanner({
 
   // Tweaks panel toggle
   const [tweaksOpen, setTweaksOpen] = useState(false);
+
+  // Ranking mode (week vs all-time)
+  const [rankMode, setRankMode] = useState<'week' | 'all'>(() => {
+    return (localStorage.getItem('sprint_rank_mode') as 'week' | 'all') || 'week';
+  });
+  useEffect(() => { localStorage.setItem('sprint_rank_mode', rankMode); }, [rankMode]);
 
   // Daily goal — exibido no header
   const dailyGoalTarget = myG.dailyGoal ?? DEFAULT_DAILY_GOAL;
@@ -1405,8 +1527,16 @@ export default function SprintPlanner({
               </div>
             </section>
 
-            <RankingCard rows={ranking} youId={linkedMemberId} />
-            <MissionsCard missions={missions} />
+            <RankingCard rows={ranking} youId={linkedMemberId} mode={rankMode} onModeChange={setRankMode} />
+            <MissionsCard missions={missions} paid={paidMissions} />
+
+            <StatsCard
+              totalCompleted={myG.totalCompleted ?? 0}
+              bestStreak={myG.bestStreak ?? 0}
+              xp={myG.xp ?? 0}
+            />
+
+            <BadgesCard owned={myG.badges ?? []} />
 
             {!linkedMemberId && teamMembers.length > 0 && (
               <section className="card glass">
@@ -1551,6 +1681,28 @@ export default function SprintPlanner({
               <span>Som sutil</span>
               <input type="checkbox" checked={prefs.sound} onChange={e => setPref('sound', e.target.checked)} />
             </label>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13.5, marginBottom: 6 }}>
+                <span>Meta diária de tarefas</span>
+                <strong>{dailyGoalTarget}</strong>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={10}
+                step={1}
+                value={dailyGoalTarget}
+                onChange={e => {
+                  const v = Number(e.target.value);
+                  onUpdateGamification({ ...myG, userId: user.uid, dailyGoal: v });
+                }}
+                style={{ width: '100%' }}
+              />
+              <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>
+                Quantas tarefas você precisa concluir no dia para manter a streak.
+              </div>
+            </div>
 
             <button onClick={() => setTweaksOpen(false)}
               style={{

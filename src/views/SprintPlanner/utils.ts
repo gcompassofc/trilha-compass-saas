@@ -103,3 +103,49 @@ export function taskMatchesFocus(taskTitle: string, keywords: string[]): boolean
   const t = normalize(taskTitle);
   return keywords.some(k => t.includes(k));
 }
+
+// ── Badges ─────────────────────────────────────────────────────────────────
+export interface BadgeDef {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  test: (g: { xp: number; level: number; streak: number; totalCompleted: number; bestStreak: number; comboCount: number }) => boolean;
+}
+
+export const BADGES: BadgeDef[] = [
+  { id: 'first_blood', name: 'Primeira tarefa', description: 'Concluiu sua primeira tarefa.', icon: '🌱',
+    test: g => g.totalCompleted >= 1 },
+  { id: 'ten_done', name: 'Esquentando', description: 'Concluiu 10 tarefas.', icon: '🔥',
+    test: g => g.totalCompleted >= 10 },
+  { id: 'fifty_done', name: 'Tropa pesada', description: 'Concluiu 50 tarefas.', icon: '💪',
+    test: g => g.totalCompleted >= 50 },
+  { id: 'hundred_done', name: 'Centurião', description: 'Concluiu 100 tarefas.', icon: '🏆',
+    test: g => g.totalCompleted >= 100 },
+  { id: 'streak_7', name: 'Semana cheia', description: 'Manteve streak de 7 dias.', icon: '📅',
+    test: g => g.bestStreak >= 7 },
+  { id: 'streak_14', name: 'Duas semanas', description: 'Manteve streak de 14 dias.', icon: '🔂',
+    test: g => g.bestStreak >= 14 },
+  { id: 'streak_30', name: 'Mês inteiro', description: 'Manteve streak de 30 dias.', icon: '🌟',
+    test: g => g.bestStreak >= 30 },
+  { id: 'level_5', name: 'Nível 5', description: 'Alcançou o nível 5.', icon: '✨',
+    test: g => g.level >= 5 },
+  { id: 'level_10', name: 'Nível 10', description: 'Alcançou o nível 10.', icon: '💫',
+    test: g => g.level >= 10 },
+  { id: 'combo_5', name: 'Combo x5', description: 'Encadeou 5 tarefas em sequência.', icon: '⚡',
+    test: g => g.comboCount >= 5 },
+  { id: 'combo_10', name: 'Combo x10', description: 'Encadeou 10 tarefas em sequência.', icon: '🌪️',
+    test: g => g.comboCount >= 10 },
+];
+
+export function newlyEarnedBadges(
+  current: { xp: number; level: number; streak: number; totalCompleted: number; bestStreak: number; comboCount: number },
+  alreadyOwned: string[],
+): string[] {
+  const owned = new Set(alreadyOwned);
+  return BADGES.filter(b => !owned.has(b.id) && b.test(current)).map(b => b.id);
+}
+
+export function badgeById(id: string): BadgeDef | undefined {
+  return BADGES.find(b => b.id === id);
+}
