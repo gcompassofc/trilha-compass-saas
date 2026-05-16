@@ -88,7 +88,8 @@ export default function EstimatedTimePicker({ value, onChange, size = 'xs' }: Pr
       {open && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute z-50 top-full mt-1 left-0 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-3 min-w-[240px] space-y-3"
+          className="gc-panel absolute z-50 top-full mt-1 left-0 p-3 min-w-[240px] space-y-3"
+          style={{ background: 'rgba(15, 23, 42, 0.98)' }}
         >
           <div>
             <div className="text-[9px] uppercase font-bold tracking-widest text-slate-500 mb-1.5">Presets</div>

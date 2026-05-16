@@ -217,33 +217,33 @@ export default function FinancialManagement({
         </div>
         
         <div className="flex items-center gap-3">
-          <div className="flex bg-white/5 border border-white/10 p-1 rounded-xl hidden md:flex">
-            <button 
+          <div className="gc-segmented hidden md:inline-flex">
+            <button
               onClick={() => setViewMode('dashboard')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${viewMode === 'dashboard' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-400 hover:text-white'}`}
+              data-active={viewMode === 'dashboard'}
             >
               Visão Geral
             </button>
-            <button 
+            <button
               onClick={() => setViewMode('spreadsheet')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${viewMode === 'spreadsheet' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-400 hover:text-white'}`}
+              data-active={viewMode === 'spreadsheet'}
             >
               Planilha Macro
             </button>
           </div>
-          
+
           {viewMode === 'dashboard' && (
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex bg-white/5 border border-white/10 p-0.5 rounded-lg text-xs">
+              <div className="gc-segmented">
                 <button
                   onClick={() => setFilterMode('month')}
-                  className={`px-3 py-1.5 rounded-md transition-all font-medium ${filterMode === 'month' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`}
+                  data-active={filterMode === 'month'}
                 >
                   Mês
                 </button>
                 <button
                   onClick={() => setFilterMode('range')}
-                  className={`px-3 py-1.5 rounded-md transition-all font-medium ${filterMode === 'range' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`}
+                  data-active={filterMode === 'range'}
                 >
                   Período
                 </button>
@@ -253,7 +253,7 @@ export default function FinancialManagement({
                   type="month"
                   value={filterMonth}
                   onChange={(e) => setFilterMonth(e.target.value)}
-                  className="bg-white/5 border border-white/10 text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all [color-scheme:dark]"
+                  className="gc-input w-auto [color-scheme:dark]"
                 />
               ) : (
                 <div className="flex items-center gap-2">
@@ -261,14 +261,14 @@ export default function FinancialManagement({
                     type="date"
                     value={filterStartDate}
                     onChange={(e) => setFilterStartDate(e.target.value)}
-                    className="bg-white/5 border border-white/10 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all [color-scheme:dark]"
+                    className="gc-input w-auto [color-scheme:dark]"
                   />
                   <span className="text-slate-500 text-sm">até</span>
                   <input
                     type="date"
                     value={filterEndDate}
                     onChange={(e) => setFilterEndDate(e.target.value)}
-                    className="bg-white/5 border border-white/10 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all [color-scheme:dark]"
+                    className="gc-input w-auto [color-scheme:dark]"
                   />
                 </div>
               )}
@@ -288,12 +288,12 @@ export default function FinancialManagement({
         <>
       {/* CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm relative overflow-hidden">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="gc-stat">
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-bl-full pointer-events-none" />
           <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-slate-400 text-sm font-medium">Entradas</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{formatCurrency(stats.totalEntradas)}</h3>
+              <p className="gc-stat__label">Entradas</p>
+              <h3 className="gc-stat__value">{formatCurrency(stats.totalEntradas)}</h3>
             </div>
             <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
               <TrendingUp className="w-5 h-5" />
@@ -305,12 +305,12 @@ export default function FinancialManagement({
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm relative overflow-hidden">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="gc-stat">
           <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/10 rounded-bl-full pointer-events-none" />
           <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-slate-400 text-sm font-medium">Custo de Operação</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{formatCurrency(stats.despesasTotal)}</h3>
+              <p className="gc-stat__label">Custo de Operação</p>
+              <h3 className="gc-stat__value">{formatCurrency(stats.despesasTotal)}</h3>
             </div>
             <div className="p-2 bg-rose-500/20 rounded-lg text-rose-400">
               <TrendingDown className="w-5 h-5" />
@@ -321,12 +321,12 @@ export default function FinancialManagement({
           </p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm relative overflow-hidden">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="gc-stat">
           <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-bl-full pointer-events-none" />
           <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-slate-400 text-sm font-medium">Investimentos</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{formatCurrency(stats.invTotal)}</h3>
+              <p className="gc-stat__label">Investimentos</p>
+              <h3 className="gc-stat__value">{formatCurrency(stats.invTotal)}</h3>
             </div>
             <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
               <PieChart className="w-5 h-5" />
@@ -337,12 +337,12 @@ export default function FinancialManagement({
           </p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 rounded-2xl p-5 backdrop-blur-sm relative overflow-hidden">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="gc-stat gc-stat--accent">
           <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-bl-full pointer-events-none" />
           <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-indigo-200 text-sm font-medium">Saldo Livre p/ Caixa</p>
-              <h3 className="text-2xl font-bold text-white mt-1">{formatCurrency(stats.saldoLivre)}</h3>
+              <p className="gc-stat__label" style={{ color: '#c7d2fe' }}>Saldo Livre p/ Caixa</p>
+              <h3 className="gc-stat__value">{formatCurrency(stats.saldoLivre)}</h3>
             </div>
             <div className="p-2 bg-white/10 rounded-lg text-white">
               <DollarSign className="w-5 h-5" />
@@ -358,7 +358,7 @@ export default function FinancialManagement({
         
         {/* CHARTS & RETIRADAS */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
+          <div className="gc-card">
             <h3 className="text-lg font-bold text-white mb-6">Fluxo de Caixa (6 Meses)</h3>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -379,10 +379,10 @@ export default function FinancialManagement({
             </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
+          <div className="gc-card">
             <h3 className="text-lg font-bold text-white mb-4">Quadro de Retiradas</h3>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+              <div className="gc-panel p-4">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">
                     K
@@ -394,7 +394,7 @@ export default function FinancialManagement({
                   <p className="text-xl font-bold text-white">{formatCurrency(stats.retiradasKallyl)}</p>
                 </div>
               </div>
-              <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+              <div className="gc-panel p-4">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold text-sm">
                     A
@@ -409,7 +409,7 @@ export default function FinancialManagement({
             </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
+          <div className="gc-card">
             <div className="flex items-center gap-2 mb-4">
               <Briefcase className="w-4 h-4 text-indigo-300" />
               <h3 className="text-lg font-bold text-white">Saúde por Cliente</h3>
@@ -421,35 +421,35 @@ export default function FinancialManagement({
               </p>
             ) : (
               <div className="overflow-x-auto -mx-2">
-                <table className="w-full text-sm">
+                <table className="gc-table">
                   <thead>
-                    <tr className="text-[10px] uppercase font-bold tracking-widest text-slate-500 border-b border-white/5">
-                      <th className="text-left px-2 py-2">Cliente</th>
-                      <th className="text-right px-2 py-2">Receita</th>
-                      <th className="text-right px-2 py-2">Custo</th>
-                      <th className="text-right px-2 py-2">Inv.</th>
-                      <th className="text-right px-2 py-2">Saldo</th>
+                    <tr>
+                      <th>Cliente</th>
+                      <th style={{ textAlign: 'right' }}>Receita</th>
+                      <th style={{ textAlign: 'right' }}>Custo</th>
+                      <th style={{ textAlign: 'right' }}>Inv.</th>
+                      <th style={{ textAlign: 'right' }}>Saldo</th>
                     </tr>
                   </thead>
                   <tbody>
                     {byClient.map(row => (
-                      <tr key={row.client.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
-                        <td className="px-2 py-2.5">
+                      <tr key={row.client.id}>
+                        <td>
                           <span className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: row.client.color }} />
                             <span className="text-slate-200 font-medium">{row.client.name}</span>
                           </span>
                         </td>
-                        <td className="text-right px-2 py-2.5 font-mono text-emerald-300">
+                        <td className="text-right font-mono text-emerald-300">
                           {row.receita > 0 ? formatCurrency(row.receita) : '—'}
                         </td>
-                        <td className="text-right px-2 py-2.5 font-mono text-rose-300">
+                        <td className="text-right font-mono text-rose-300">
                           {row.custo > 0 ? formatCurrency(row.custo) : '—'}
                         </td>
-                        <td className="text-right px-2 py-2.5 font-mono text-blue-300">
+                        <td className="text-right font-mono text-blue-300">
                           {row.investimento > 0 ? formatCurrency(row.investimento) : '—'}
                         </td>
-                        <td className={`text-right px-2 py-2.5 font-mono font-bold ${row.saldo >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <td className={`text-right font-mono font-bold ${row.saldo >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                           {formatCurrency(row.saldo)}
                         </td>
                       </tr>
@@ -462,7 +462,7 @@ export default function FinancialManagement({
         </div>
 
         {/* TRANSACTIONS LIST */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl flex flex-col backdrop-blur-sm h-[800px]">
+        <div className="gc-panel flex flex-col h-[800px]">
           <div className="p-5 border-b border-white/10 flex items-start justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold text-white">Últimas Movimentações</h3>
@@ -558,7 +558,7 @@ export default function FinancialManagement({
       </div>
       </>
       ) : (
-        <div className="bg-white/5 border border-white/10 rounded-2xl flex flex-col backdrop-blur-sm h-[calc(100vh-160px)] overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="gc-panel flex flex-col h-[calc(100vh-160px)] overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="overflow-x-auto flex-1 custom-scrollbar">
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="text-xs text-slate-400 bg-[#0f172a] uppercase sticky top-0 z-10 border-b border-white/10 shadow-md">
@@ -707,20 +707,20 @@ function TransactionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <motion.div 
+    <div className="gc-modal-backdrop">
+      <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0"
         onClick={onClose}
       />
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-[#0f172a] border border-white/10 p-6 rounded-2xl w-full max-w-md relative z-10 shadow-2xl"
+        className="gc-modal relative z-10"
       >
-        <h2 className="text-xl font-bold text-white mb-6">{initialData ? 'Editar Movimentação' : 'Nova Movimentação'}</h2>
+        <h2 className="gc-modal__title">{initialData ? 'Editar Movimentação' : 'Nova Movimentação'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          
-          <div className="grid grid-cols-2 gap-2 p-1 bg-white/5 rounded-xl">
+
+          <div className="grid grid-cols-2 gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
             <button
               type="button"
               onClick={() => { setType('income'); setCategory('income_fixed'); }}
@@ -752,10 +752,10 @@ function TransactionModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Categoria</label>
-            <select 
+            <label className="gc-label">Categoria</label>
+            <select
               value={category} onChange={(e) => setCategory(e.target.value as TransactionCategory)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="gc-input"
             >
               {categoryOptions[type].map(opt => (
                 <option key={opt.value} value={opt.value} className="bg-slate-800">{opt.label}</option>
@@ -766,10 +766,10 @@ function TransactionModal({
 
           {type !== 'withdrawal' && (
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Vincular a Cliente (Opcional)</label>
+              <label className="gc-label">Vincular a Cliente (Opcional)</label>
               <select
                 value={clientId} onChange={(e) => setClientId(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="gc-input"
               >
                 <option value="" className="bg-slate-800">Nenhum</option>
                 {clients.map(c => (
@@ -780,28 +780,28 @@ function TransactionModal({
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Descrição</label>
-            <input 
+            <label className="gc-label">Descrição</label>
+            <input
               type="text" required value={description} onChange={e => setDescription(e.target.value)}
               placeholder="Ex: Mensalidade Cliente X"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="gc-input"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Valor (R$)</label>
-              <input 
+              <label className="gc-label">Valor (R$)</label>
+              <input
                 type="number" step="0.01" required value={amount} onChange={e => setAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="gc-input"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Data</label>
-              <input 
+              <label className="gc-label">Data</label>
+              <input
                 type="date" required value={date} onChange={e => setDate(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [color-scheme:dark]"
+                className="gc-input [color-scheme:dark]"
               />
             </div>
           </div>

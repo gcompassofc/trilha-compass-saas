@@ -390,18 +390,18 @@ export default function App() {
 
       <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-hidden flex flex-col h-[100dvh] md:h-screen relative z-10 transition-all duration-500">
         <div className="flex justify-between items-center mb-4">
-          <button 
+          <button
             onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-2 text-slate-400 hover:text-white bg-white/5 border border-white/10 px-4 py-1.5 rounded-full text-sm font-medium transition-all hover:bg-white/10 shadow-lg shadow-black/20"
+            className="gc-chip text-sm"
           >
             <Search className="w-4 h-4" />
             Pesquisar...
             <span className="text-[10px] font-mono opacity-50 ml-2">Ctrl+K</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => auth.signOut()}
-            className="text-white/40 hover:text-white/70 text-xs font-medium px-3 py-1 rounded-full border border-white/10"
+            className="gc-chip text-xs"
           >
             Sair ({user.email})
           </button>

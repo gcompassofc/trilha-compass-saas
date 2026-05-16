@@ -138,7 +138,7 @@ export default function TeamManagement({ teamMembers }: TeamManagementProps) {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   className={`flex items-center justify-between p-4 rounded-2xl border transition-all group ${
-                    editingId === member.id ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-white/5 border-white/5 hover:border-white/10'
+                    editingId === member.id ? 'bg-indigo-500/10 border-indigo-500/30' : 'gc-panel'
                   }`}
                 >
                   <div className="flex items-center gap-4">

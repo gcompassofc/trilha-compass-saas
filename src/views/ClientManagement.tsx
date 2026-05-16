@@ -299,17 +299,17 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsImporterOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white rounded-xl transition-all border border-indigo-500/20 shadow-sm"
+            className="gc-button gc-button--ghost text-sm"
           >
             <Upload className="w-4 h-4" />
-            <span className="text-sm font-bold">Importar Texto</span>
+            Importar Texto
           </button>
           <button
             onClick={() => exportClientTasksToCSV(clients, teamMembers)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-xl transition-all border border-emerald-500/20 shadow-sm"
+            className="gc-button gc-button--ghost text-sm"
           >
             <Download className="w-4 h-4" />
-            <span className="text-sm font-bold">Exportar Planilha</span>
+            Exportar Planilha
           </button>
         </div>
       </header>
@@ -324,14 +324,14 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
 
       {!selectedClientId ? (
         <div className="space-y-6">
-                    <div className="glass-panel p-4 border-white/10">
+          <div className="gc-panel p-4">
             <div className="flex flex-col gap-2">
               <input
                 type="text"
                 placeholder="Nome do cliente..."
                 value={newClientName}
                 onChange={(e) => setNewClientName(e.target.value)}
-                className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                className="gc-input"
               />
               <div className="flex gap-2">
                 <div className="flex-1 relative flex items-center">
@@ -341,14 +341,14 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                     value={newClientLogoUrl}
                     onChange={(e) => setNewClientLogoUrl(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddClient()}
-                    className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                    className="gc-input pr-10"
                   />
                   <label className="absolute right-2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors text-slate-400 hover:text-white" title="Fazer upload de imagem">
                     <Upload className="w-4 h-4" />
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
                       onChange={async (e) => {
                         if (e.target.files && e.target.files[0]) {
                           try {
@@ -358,13 +358,14 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                             console.error(err);
                           }
                         }
-                      }} 
+                      }}
                     />
                   </label>
                 </div>
-                <button 
+                <button
                   onClick={handleAddClient}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
+                  className="gc-button"
+                  aria-label="Adicionar cliente"
                 >
                   <Plus className="w-5 h-5" />
                 </button>
@@ -437,12 +438,12 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6"
               >
-                <button 
+                <button
                   onClick={() => setSelectedClientId(null)}
-                  className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors group bg-white/5 px-4 py-2 rounded-xl w-fit border border-white/10 hover:bg-white/10"
+                  className="gc-chip text-sm"
                 >
-                  <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                  <span className="font-medium text-sm">Voltar para clientes</span>
+                  <ChevronLeft className="w-4 h-4" />
+                  Voltar para clientes
                 </button>
 
                 <GlassCard className="p-8">
@@ -458,19 +459,19 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                       {isEditingClient ? (
                         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div>
-                             <label className="text-[10px] text-slate-500 font-bold uppercase">Nome</label>
-                             <input type="text" value={editClientName} onChange={e => setEditClientName(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-1 focus:ring-indigo-500" />
+                             <label className="gc-label">Nome</label>
+                             <input type="text" value={editClientName} onChange={e => setEditClientName(e.target.value)} className="gc-input" />
                           </div>
                           <div>
-                             <label className="text-[10px] text-slate-500 font-bold uppercase">Logo (URL ou Upload)</label>
+                             <label className="gc-label">Logo (URL ou Upload)</label>
                              <div className="flex gap-1 relative items-center">
-                               <input type="text" value={editClientLogoUrl} onChange={e => setEditClientLogoUrl(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 pr-8 text-xs text-white" placeholder="https://..." />
+                               <input type="text" value={editClientLogoUrl} onChange={e => setEditClientLogoUrl(e.target.value)} className="gc-input pr-8" placeholder="https://..." />
                                <label className="absolute right-1 p-1 bg-white/10 hover:bg-white/20 rounded cursor-pointer transition-colors text-slate-300" title="Upload Imagem">
                                  <Upload className="w-3 h-3" />
-                                 <input 
-                                   type="file" 
-                                   accept="image/*" 
-                                   className="hidden" 
+                                 <input
+                                   type="file"
+                                   accept="image/*"
+                                   className="hidden"
                                    onChange={async (e) => {
                                      if (e.target.files && e.target.files[0]) {
                                        try {
@@ -480,14 +481,14 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                          console.error(err);
                                        }
                                      }
-                                   }} 
+                                   }}
                                  />
                                </label>
                              </div>
                           </div>
                           <div>
-                             <label className="text-[10px] text-slate-500 font-bold uppercase">Cor (Hex ou HSL)</label>
-                             <input type="text" value={editClientColor} onChange={e => setEditClientColor(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-1 focus:ring-indigo-500" />
+                             <label className="gc-label">Cor (Hex ou HSL)</label>
+                             <input type="text" value={editClientColor} onChange={e => setEditClientColor(e.target.value)} className="gc-input" />
                           </div>
                         </div>
                       ) : (
@@ -532,24 +533,24 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                   </div>
 
                   <div className="space-y-6">
-                    <div className="glass-panel p-6 border-white/5 space-y-6">
+                    <div className="gc-panel p-6 space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Título da Demanda</label>
+                          <label className="gc-label">Título da Demanda</label>
                           <input
                             type="text"
                             placeholder="Ex: Tráfego Pago"
                             value={newTaskTitle}
                             onChange={(e) => setNewTaskTitle(e.target.value)}
-                            className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                            className="gc-input"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Prioridade</label>
+                          <label className="gc-label">Prioridade</label>
                           <select
                             value={newTaskPriority}
                             onChange={(e) => setNewTaskPriority(e.target.value as Priority)}
-                            className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 appearance-none text-slate-300"
+                            className="gc-input appearance-none"
                           >
                             <option value="high">Urgente</option>
                             <option value="medium">Normal</option>
@@ -557,7 +558,7 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase flex justify-between">
+                          <label className="gc-label flex justify-between">
                             Responsáveis
                           </label>
                           <div className="flex flex-wrap gap-1.5 p-1 bg-white/5 border border-white/5 rounded-xl min-h-[44px] items-center custom-scrollbar overflow-x-auto">
@@ -582,38 +583,40 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Tipo</label>
-                          <div className="flex bg-white/5 border border-white/5 rounded-xl p-1 h-[44px]">
+                          <label className="gc-label">Tipo</label>
+                          <div className="gc-segmented w-full h-[44px]">
                             <button
                               type="button"
                               onClick={() => setNewTaskType('scope')}
-                              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg text-[10px] uppercase font-bold transition-all ${newTaskType === 'scope' || !newTaskType ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-300 hover:bg-white/5'}`}
+                              data-active={newTaskType === 'scope' || !newTaskType}
+                              className="flex-1 flex items-center justify-center gap-1.5"
                             >
                               <Package className="w-3 h-3" /> Escopo
                             </button>
                             <button
                               type="button"
                               onClick={() => setNewTaskType('overdelivery')}
-                              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg text-[10px] uppercase font-bold transition-all ${newTaskType === 'overdelivery' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-300 hover:bg-white/5'}`}
+                              data-active={newTaskType === 'overdelivery'}
+                              className="flex-1 flex items-center justify-center gap-1.5"
                             >
                               <Gift className="w-3 h-3" /> Overdelivery
                             </button>
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Data (Opcional)</label>
+                          <label className="gc-label">Data (Opcional)</label>
                           <input
                             type="date"
                             value={newTaskDate}
                             onChange={(e) => setNewTaskDate(e.target.value)}
-                            className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 appearance-none text-slate-300"
+                            className="gc-input [color-scheme:dark]"
                           />
                         </div>
                       </div>
 
                       {/* Subtasks Creation */}
                       <div className="space-y-3 pt-2 border-t border-white/5">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2 pt-2">
+                        <label className="gc-label flex items-center gap-2 pt-2">
                           <ListTodo className="w-3 h-3" /> Subtarefas ({subTasks.length})
                         </label>
                         <div className="flex gap-2">
@@ -623,9 +626,9 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                             value={newSubTaskTitle}
                             onChange={(e) => setNewSubTaskTitle(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && addSubTaskToNew()}
-                            className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                            className="gc-input flex-1 text-xs"
                           />
-                          <button onClick={addSubTaskToNew} className="p-2 bg-white/10 rounded-xl hover:bg-white/20"><Plus className="w-4 h-4 text-white" /></button>
+                          <button onClick={addSubTaskToNew} className="gc-button gc-button--ghost" aria-label="Adicionar subtarefa"><Plus className="w-4 h-4" /></button>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {subTasks.map((st, i) => (
@@ -638,9 +641,9 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                       </div>
 
                       <div className="pt-2">
-                        <button 
+                        <button
                           onClick={() => handleAddTask(selectedClient.id)}
-                          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-3 font-bold transition-all shadow-lg shadow-indigo-600/10 active:scale-95 flex items-center justify-center gap-2"
+                          className="gc-button w-full justify-center py-3"
                         >
                           <Plus className="w-4 h-4" />
                           Adicionar Demanda {newTaskDate ? `ao Backlog e Planejador (${getDayOfWeekFromDateString(newTaskDate).substring(0, 3)})` : 'ao Backlog'}

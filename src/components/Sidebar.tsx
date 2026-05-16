@@ -36,16 +36,22 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             {activeTab === item.id && (
               <motion.div
                 layoutId="active-bg"
-                className="absolute inset-0 bg-white/5 rounded-2xl border border-white/10 hidden md:block"
+                className="absolute inset-0 rounded-2xl hidden md:block"
+                style={{
+                  background: 'linear-gradient(135deg, var(--gc-accent-soft), rgba(168, 85, 247, 0.12))',
+                  border: '1px solid rgba(99, 102, 241, 0.35)',
+                  boxShadow: '0 4px 16px -4px var(--gc-accent-glow)'
+                }}
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}
             <item.icon className="w-5 h-5 relative z-10" />
             <span className="text-[10px] md:text-base font-medium relative z-10">{item.label}</span>
             {activeTab === item.id && (
-              <motion.div 
+              <motion.div
                 layoutId="active-pill"
-                className="w-1 h-5 bg-indigo-500 rounded-full absolute right-3 hidden md:block"
+                className="w-1 h-5 rounded-full absolute right-3 hidden md:block"
+                style={{ background: 'linear-gradient(135deg, var(--gc-accent), var(--gc-accent-2))' }}
               />
             )}
           </button>

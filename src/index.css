@@ -224,4 +224,126 @@
     font-size: 14px;
     letter-spacing: 0.01em;
   }
+
+  /* Painel "plano": fundo glass + hairline, sem padding default — para listar items */
+  .gc-panel {
+    background: var(--gc-surface);
+    backdrop-filter: blur(var(--gc-blur));
+    -webkit-backdrop-filter: blur(var(--gc-blur));
+    border: 1px solid var(--gc-hairline);
+    border-radius: var(--gc-radius-lg);
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .gc-panel:hover { border-color: var(--gc-hairline-strong); }
+
+  /* Segmented control (filtros tipo "Lista / Por cliente / Ranking" do Sprint) */
+  .gc-segmented {
+    display: inline-flex;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--gc-surface);
+    border: 1px solid var(--gc-hairline);
+    gap: 2px;
+  }
+  .gc-segmented > button {
+    appearance: none;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--gc-text-3);
+    background: transparent;
+    padding: 6px 14px;
+    border-radius: 8px;
+    transition: background .15s ease, color .15s ease;
+  }
+  .gc-segmented > button:hover { color: var(--gc-text); background: var(--gc-surface-2); }
+  .gc-segmented > button[data-active="true"] {
+    background: linear-gradient(135deg, var(--gc-accent-soft), rgba(168, 85, 247, 0.12));
+    color: var(--gc-text);
+    box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.3);
+  }
+
+  /* Stat card (4 cartões de números no topo) */
+  .gc-stat {
+    position: relative;
+    overflow: hidden;
+    background: var(--gc-surface);
+    backdrop-filter: blur(var(--gc-blur));
+    -webkit-backdrop-filter: blur(var(--gc-blur));
+    border: 1px solid var(--gc-hairline);
+    border-radius: var(--gc-radius-lg);
+    padding: 20px;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  .gc-stat:hover { border-color: var(--gc-hairline-strong); transform: translateY(-1px); }
+  .gc-stat--accent {
+    background: linear-gradient(135deg, var(--gc-accent-soft), rgba(168, 85, 247, 0.12));
+    border-color: rgba(99, 102, 241, 0.35);
+  }
+  .gc-stat__label { color: var(--gc-text-3); font-size: 13px; font-weight: 500; }
+  .gc-stat__value { color: var(--gc-text); font-size: 24px; font-weight: 700; letter-spacing: -0.01em; margin-top: 4px; }
+
+  /* Modal backdrop + container (igual estilo do Sprint Planner) */
+  .gc-modal-backdrop {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .gc-modal {
+    width: 100%;
+    max-width: 480px;
+    background: rgba(15, 23, 42, 0.98);
+    backdrop-filter: blur(var(--gc-blur));
+    -webkit-backdrop-filter: blur(var(--gc-blur));
+    border: 1px solid var(--gc-hairline-strong);
+    border-radius: var(--gc-radius-lg);
+    padding: 24px;
+    box-shadow: var(--gc-shadow-glass);
+  }
+  .gc-modal__title {
+    color: var(--gc-text);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 20px;
+  }
+
+  /* Table no padrão glass */
+  .gc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .gc-table thead tr {
+    border-bottom: 1px solid var(--gc-hairline);
+  }
+  .gc-table thead th {
+    text-align: left;
+    padding: 12px 8px;
+    color: var(--gc-text-3);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+  .gc-table tbody tr {
+    border-bottom: 1px solid var(--gc-hairline);
+    transition: background .15s ease;
+  }
+  .gc-table tbody tr:last-child { border-bottom: 0; }
+  .gc-table tbody tr:hover { background: var(--gc-surface); }
+  .gc-table tbody td { padding: 10px 8px; color: var(--gc-text-2); }
+
+  /* Priority pill helpers (compatível com paleta Sprint) */
+  .gc-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid;
+  }
 }

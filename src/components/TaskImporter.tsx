@@ -312,7 +312,8 @@ export default function TaskImporter({ open, onClose, clients, teamMembers, onUp
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             onClick={e => e.stopPropagation()}
-            className="glass-panel w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl border border-white/10"
+            className="gc-modal w-full flex flex-col"
+            style={{ maxWidth: '768px', maxHeight: '85vh', padding: 0 }}
           >
             <div className="flex items-center justify-between p-5 border-b border-white/5">
               <div className="flex items-center gap-3">
@@ -336,11 +337,11 @@ export default function TaskImporter({ open, onClose, clients, teamMembers, onUp
                     value={rawText}
                     onChange={e => setRawText(e.target.value)}
                     placeholder={`Cole aqui o texto no formato:\n\nNOME DO CLIENTE\n\nDemanda: Título da tarefa\nResponsáveis: Allyson\nTipo: Escopo\nPrioridade: Alta\nSubtarefas:\n- Primeira subtarefa\n- Segunda subtarefa`}
-                    className="w-full min-h-[280px] bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-[12px] text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500/30 font-mono leading-relaxed"
+                    className="gc-input min-h-[280px] font-mono leading-relaxed text-[12px]"
                   />
 
                   {rawText.trim() && (
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.03] border border-white/5">
+                    <div className="gc-panel flex items-center justify-between p-3">
                       <div className="text-[11px] text-slate-400">
                         <span className="text-white font-bold">{parseResult.sections.filter(s => s.clientId).length}</span> clientes ·{' '}
                         <span className="text-white font-bold">{totalTasks}</span> demandas ·{' '}
@@ -349,7 +350,7 @@ export default function TaskImporter({ open, onClose, clients, teamMembers, onUp
                       <button
                         onClick={() => setStep('preview')}
                         disabled={totalTasks === 0}
-                        className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:hover:bg-indigo-500 text-white text-[11px] font-bold uppercase tracking-wider rounded-lg transition-colors"
+                        className="gc-button text-xs"
                       >
                         Ver Preview
                       </button>
@@ -447,14 +448,14 @@ export default function TaskImporter({ open, onClose, clients, teamMembers, onUp
               <div className="flex items-center justify-between p-4 border-t border-white/5">
                 <button
                   onClick={() => setStep('input')}
-                  className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-white"
+                  className="gc-button gc-button--ghost text-xs"
                 >
                   Voltar
                 </button>
                 <button
                   onClick={handleImport}
                   disabled={totalTasks === 0}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-white text-[11px] font-bold uppercase tracking-wider rounded-lg transition-colors"
+                  className="gc-button text-xs"
                 >
                   <Upload className="w-3.5 h-3.5" />
                   Importar {totalTasks} demandas
@@ -466,7 +467,7 @@ export default function TaskImporter({ open, onClose, clients, teamMembers, onUp
               <div className="flex justify-end p-4 border-t border-white/5">
                 <button
                   onClick={handleClose}
-                  className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-[11px] font-bold uppercase tracking-wider rounded-lg transition-colors"
+                  className="gc-button gc-button--ghost text-xs"
                 >
                   Fechar
                 </button>

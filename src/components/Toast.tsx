@@ -66,7 +66,7 @@ export default function ToastContainer() {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 30, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className={`pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-xl shadow-black/30 ${COLORS[item.kind]}`}
+              className={`pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5)] ${COLORS[item.kind]}`}
             >
               <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
