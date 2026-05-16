@@ -41,11 +41,11 @@ const DEFAULT_PREFS: Prefs = {
   density: 'regular',
   showRightPanel: false,
   confetti: true,
-  sound: false,
+  sound: true,
 };
 
 const PREFS_KEY = 'sprint_planner_prefs';
-const PREFS_VERSION = 2;
+const PREFS_VERSION = 3;
 
 function loadPrefs(): Prefs {
   try {

@@ -55,24 +55,13 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((db - da) / 86400000);
 }
 
-// Subtle ping using WebAudio (optional).
-let __audioCtx: AudioContext | null = null;
-export function playPing(freq = 880) {
+// Subtle completion sound (optional). The freq arg is ignored — kept for signature compatibility.
+const SOUND_URL = '/sounds/videoplayback.mp3';
+export function playPing(_freq = 880) {
   try {
-    const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
-    if (!Ctx) return;
-    if (!__audioCtx) __audioCtx = new Ctx();
-    const ctx = __audioCtx!;
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'sine';
-    o.frequency.value = freq;
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.06, ctx.currentTime + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
-    o.connect(g); g.connect(ctx.destination);
-    o.start();
-    o.stop(ctx.currentTime + 0.28);
+    const a = new Audio(SOUND_URL);
+    a.volume = 0.35;
+    void a.play();
   } catch {
     /* noop */
   }
