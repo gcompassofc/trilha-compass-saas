@@ -14,7 +14,7 @@ import Login from './components/Login';
 import GlobalSearch from './components/GlobalSearch';
 import ToastContainer from './components/Toast';
 import { Search } from 'lucide-react';
-import { Client, WeeklyTask, DayOfWeek, TeamMember, FinancialTransaction, UserGamification } from './types';
+import { Client, WeeklyTask, DayOfWeek, TeamMember, FinancialTransaction, UserGamification, SprintFocus } from './types';
 import { dbService } from './services/db';
 import { auth, db } from './firebase/config';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -34,6 +34,7 @@ export default function App() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [gamification, setGamification] = useState<UserGamification[]>([]);
+  const [sprintFocus, setSprintFocus] = useState<SprintFocus | null>(null);
   const [incompleteTasks, setIncompleteTasks] = useState<WeeklyTask[]>([]);
   const [currentWeekId, setCurrentWeekId] = useState(getWeekId(new Date()));
   const [loading, setLoading] = useState(true);
@@ -105,7 +106,10 @@ export default function App() {
     const unsubTasks = dbService.subscribeToTasks(currentWeekId, (data) => {
       setWeeklyTasks(data);
     });
-    return () => unsubTasks();
+    const unsubFocus = dbService.subscribeToSprintFocus(currentWeekId, (data) => {
+      setSprintFocus(data);
+    });
+    return () => { unsubTasks(); unsubFocus(); };
   }, [user, currentWeekId]);
 
   // Handler Functions
@@ -425,6 +429,8 @@ export default function App() {
                 onAddTask={handleAddTask}
                 gamification={gamification}
                 onUpdateGamification={dbService.upsertUserGamification}
+                sprintFocus={sprintFocus}
+                onUpdateSprintFocus={dbService.upsertSprintFocus}
               />
             </motion.div>
           )}

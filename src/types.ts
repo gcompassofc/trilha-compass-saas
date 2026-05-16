@@ -68,6 +68,7 @@ export interface WeeklyTask {
   responsibles?: string[];
   estimatedMinutes?: number;
   kind?: TaskKind;
+  xpAwarded?: boolean; // anti-exploit: true após creditar XP na primeira conclusão
 }
 
 export interface UserGamification {
@@ -77,6 +78,19 @@ export interface UserGamification {
   streak: number;
   lastActiveDate?: string; // YYYY-MM-DD — para calcular streak
   totalCompleted?: number;
+  updatedAt?: number;
+  dailyGoal?: number; // meta diária de tarefas (default 3)
+  dailyCompleted?: number; // contador de tarefas concluídas hoje
+  dailyCountedDate?: string; // YYYY-MM-DD ao qual dailyCompleted se refere
+  bestStreak?: number;
+  comboCount?: number;
+  comboExpiresAt?: number; // timestamp ms
+}
+
+export interface SprintFocus {
+  weekId: string; // doc id — segunda da semana, ex: '2026-05-11'
+  text: string;
+  updatedBy?: string;
   updatedAt?: number;
 }
 

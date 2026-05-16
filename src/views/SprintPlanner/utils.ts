@@ -66,3 +66,40 @@ export function playPing(_freq = 880) {
     /* noop */
   }
 }
+
+// Default daily goal for streak — quantas tarefas no dia mantêm o fogo aceso.
+export const DEFAULT_DAILY_GOAL = 3;
+// Combo expira em 3.5s a partir do último complete.
+export const COMBO_TTL_MS = 3500;
+
+// Calcula reward base por task: 10 pontos + escala por dificuldade (tempo estimado e prioridade).
+export function rewardForTask(estimatedMinutes?: number, priority?: 'low' | 'medium' | 'high', kind?: 'pontual' | 'recorrente' | 'urgente') {
+  let r = 10;
+  if (estimatedMinutes && estimatedMinutes > 0) r += Math.round(estimatedMinutes / 15) * 5;
+  if (priority === 'high') r += 5;
+  if (kind === 'urgente') r += 10;
+  return r;
+}
+
+// Extrai palavras-chave significativas do foco para casamento (4+ letras, lower, sem acento).
+const STOPWORDS = new Set([
+  'para', 'pela', 'pelo', 'com', 'sem', 'mais', 'menos', 'cada', 'todo', 'toda',
+  'esta', 'este', 'isso', 'aquele', 'aquela', 'nosso', 'nossa', 'minha', 'meus',
+  'foco', 'semana', 'fazer', 'tarefa', 'tarefas', 'projeto',
+]);
+function normalize(s: string) {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+export function focusKeywords(focusText: string): string[] {
+  if (!focusText) return [];
+  return Array.from(new Set(
+    normalize(focusText)
+      .split(/[^a-z0-9]+/)
+      .filter(w => w.length >= 4 && !STOPWORDS.has(w))
+  ));
+}
+export function taskMatchesFocus(taskTitle: string, keywords: string[]): boolean {
+  if (!keywords.length) return false;
+  const t = normalize(taskTitle);
+  return keywords.some(k => t.includes(k));
+}

@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { User } from 'firebase/auth';
-import { Client, DayOfWeek, SubTask, TaskComment, TaskKind, TaskType, TeamMember, UserGamification, WeeklyTask } from '../../types';
+import { Client, DayOfWeek, SprintFocus, SubTask, TaskComment, TaskKind, TaskType, TeamMember, UserGamification, WeeklyTask } from '../../types';
 import { Icon } from './Icons';
 import { buildRanking, clientById, SprintDayView, SprintTaskView, toSprintWeek, toTaskView } from './adapter';
-import { fmtMinutes, levelFromXp, parseTimeText, playPing, spawnXPFloater, todayISO, daysBetween } from './utils';
+import { COMBO_TTL_MS, DEFAULT_DAILY_GOAL, focusKeywords, fmtMinutes, levelFromXp, parseTimeText, playPing, rewardForTask, spawnXPFloater, taskMatchesFocus, todayISO, daysBetween } from './utils';
 import Timer from '../../components/Timer';
 import EstimatedTimePicker from '../../components/EstimatedTimePicker';
 import './sprint.css';
@@ -21,6 +21,8 @@ interface SprintPlannerProps {
   onAddTask: (task: Omit<WeeklyTask, 'id'>) => void;
   gamification: UserGamification[];
   onUpdateGamification: (entry: UserGamification) => void;
+  sprintFocus: SprintFocus | null;
+  onUpdateSprintFocus: (focus: SprintFocus) => void;
 }
 
 type ThemePref = 'dark' | 'light';
@@ -607,9 +609,9 @@ function ComboBanner({ multiplier }: { multiplier: number }) {
 }
 
 // ── NicePopup ───────────────────────────────────────────────────────────────
-function NicePopup({ xp, combo, onDone }: { xp: number; combo: number; onDone: () => void }) {
+function NicePopup({ xp, combo, bonus, onDone }: { xp: number; combo: number; bonus?: string; onDone: () => void }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 1900);
+    const t = setTimeout(onDone, 2200);
     return () => clearTimeout(t);
   }, [onDone]);
   return (
@@ -619,6 +621,7 @@ function NicePopup({ xp, combo, onDone }: { xp: number; combo: number; onDone: (
       <div className="nice__sub">
         {combo > 1 ? `Combo x${combo} — você tá voando!` : 'Mais uma tarefa fora da lista.'}
       </div>
+      {bonus && <div className="nice__bonus">⚡ {bonus}</div>}
       <div className="nice__xp">
         <Icon.Sparkle size={14} />
         +{xp} XP
@@ -679,6 +682,7 @@ function applyTheme(el: HTMLElement | null, prefs: Prefs) {
 export default function SprintPlanner({
   user, clients, weeklyTasks, teamMembers, incompleteTasks, currentWeekId, setCurrentWeekId,
   onUpdateTask, onDeleteTask, onAddTask, gamification, onUpdateGamification,
+  sprintFocus, onUpdateSprintFocus,
 }: SprintPlannerProps) {
   const scopeRef = useRef<HTMLDivElement>(null);
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
@@ -790,10 +794,24 @@ export default function SprintPlanner({
   };
 
   // Combo + UI feedback state
-  const [combo, setCombo] = useState(0);
   const [confettiSeed, setConfettiSeed] = useState(0);
-  const [nice, setNice] = useState<{ xp: number; combo: number } | null>(null);
-  const comboTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [nice, setNice] = useState<{ xp: number; combo: number; bonus?: string } | null>(null);
+
+  // Combo derivado da gamificação persistida — sobrevive a refresh.
+  const currentCombo = useMemo(() => {
+    const g = gamification.find(x => x.userId === user.uid);
+    if (!g || !g.comboCount || !g.comboExpiresAt) return 0;
+    return g.comboExpiresAt > Date.now() ? g.comboCount : 0;
+  }, [gamification, user.uid]);
+  const [comboTick, setComboTick] = useState(0); // força re-render quando o TTL expira
+  useEffect(() => {
+    const g = gamification.find(x => x.userId === user.uid);
+    if (!g?.comboExpiresAt) return;
+    const ms = g.comboExpiresAt - Date.now();
+    if (ms <= 0) return;
+    const t = setTimeout(() => setComboTick(v => v + 1), ms + 50);
+    return () => clearTimeout(t);
+  }, [gamification, user.uid, comboTick]);
 
   // Build sprint week view
   const sprintDays: SprintDayView[] = useMemo(() => {
@@ -843,48 +861,94 @@ export default function SprintPlanner({
   }, [gamification, user.uid]);
   const { level, intoLevel, needed } = levelFromXp(myG.xp);
 
+  // Keywords do foco da semana (para bônus de XP em tasks alinhadas).
+  const focusKW = useMemo(() => focusKeywords(sprintFocus?.text ?? ''), [sprintFocus]);
+
   // Toggle task with gamification side-effects
   const handleToggleTask = useCallback((task: SprintTaskView, ev: React.ChangeEvent<HTMLInputElement>) => {
     const willComplete = !task.completed;
-    onUpdateTask({ ...task.raw, completed: willComplete });
-    if (!willComplete) return;
+    // Anti-exploit: marca xpAwarded na PRIMEIRA conclusão. Desmarcar não estorna; recompletar não paga.
+    const alreadyAwarded = task.raw.xpAwarded === true;
+    const nextRaw: WeeklyTask = {
+      ...task.raw,
+      completed: willComplete,
+      xpAwarded: alreadyAwarded || willComplete ? true : task.raw.xpAwarded,
+    };
+    onUpdateTask(nextRaw);
 
-    setCombo(c => {
-      const newC = c + 1;
-      const reward = 10 + (newC - 1) * 5;
+    if (!willComplete || alreadyAwarded) return;
 
-      // Streak math
-      const today = todayISO();
-      let nextStreak = myG.streak;
-      if (myG.lastActiveDate !== today) {
-        if (myG.lastActiveDate) {
-          const diff = daysBetween(myG.lastActiveDate, today);
-          nextStreak = diff === 1 ? myG.streak + 1 : 1;
-        } else {
-          nextStreak = 1;
-        }
+    // Reward base por dificuldade
+    let reward = rewardForTask(task.estimatedMinutes, task.raw.priority, task.kind);
+
+    // Combo (persistido). Se ainda dentro do TTL, incrementa; senão começa em 1.
+    const now = Date.now();
+    const prevCombo = (myG.comboExpiresAt ?? 0) > now ? (myG.comboCount ?? 0) : 0;
+    const newCombo = prevCombo + 1;
+    const comboBonus = (newCombo - 1) * 5;
+    reward += comboBonus;
+
+    // Bônus de foco da semana
+    let bonusLabel: string | undefined;
+    if (taskMatchesFocus(task.title, focusKW)) {
+      reward += 10;
+      bonusLabel = 'foco da semana';
+    }
+
+    // Streak + meta diária. Só conta como "dia ativo" se bater a meta.
+    const today = todayISO();
+    const goal = myG.dailyGoal ?? DEFAULT_DAILY_GOAL;
+    const sameDay = myG.dailyCountedDate === today;
+    const newDailyCompleted = (sameDay ? (myG.dailyCompleted ?? 0) : 0) + 1;
+    const reachedGoalNow = sameDay
+      ? newDailyCompleted === goal // bateu agora
+      : newDailyCompleted >= goal; // primeira do dia já bate (goal=1)
+
+    let nextStreak = myG.streak ?? 0;
+    let nextLastActive = myG.lastActiveDate;
+    if (reachedGoalNow) {
+      if (myG.lastActiveDate === today) {
+        // já contou hoje (não deveria entrar aqui pelo guard sameDay, mas mantém safe)
+        nextStreak = Math.max(1, nextStreak);
+      } else if (myG.lastActiveDate) {
+        const diff = daysBetween(myG.lastActiveDate, today);
+        nextStreak = diff === 1 ? nextStreak + 1 : 1;
+      } else {
+        nextStreak = 1;
       }
+      nextLastActive = today;
+    }
 
-      onUpdateGamification({
-        userId: user.uid,
-        xp: myG.xp + reward,
-        level: levelFromXp(myG.xp + reward).level,
-        streak: nextStreak,
-        lastActiveDate: today,
-        totalCompleted: (myG.totalCompleted ?? 0) + 1,
-      });
+    const newXp = (myG.xp ?? 0) + reward;
+    const prevLevel = levelFromXp(myG.xp ?? 0).level;
+    const newLevel = levelFromXp(newXp).level;
+    const leveledUp = newLevel > prevLevel;
 
-      if (prefs.confetti) setConfettiSeed(Date.now());
-      if (prefs.sound) playPing(660 + Math.min(newC, 8) * 60);
-      const rect = (ev.target as HTMLElement).getBoundingClientRect();
-      spawnXPFloater(rect, reward);
-      setNice({ xp: reward, combo: newC });
-
-      if (comboTimer.current) clearTimeout(comboTimer.current);
-      comboTimer.current = setTimeout(() => setCombo(0), 3500);
-      return newC;
+    onUpdateGamification({
+      userId: user.uid,
+      xp: newXp,
+      level: newLevel,
+      streak: nextStreak,
+      lastActiveDate: nextLastActive,
+      totalCompleted: (myG.totalCompleted ?? 0) + 1,
+      dailyGoal: goal,
+      dailyCompleted: newDailyCompleted,
+      dailyCountedDate: today,
+      bestStreak: Math.max(myG.bestStreak ?? 0, nextStreak),
+      comboCount: newCombo,
+      comboExpiresAt: now + COMBO_TTL_MS,
     });
-  }, [onUpdateTask, onUpdateGamification, myG, user.uid, prefs.confetti, prefs.sound]);
+
+    if (prefs.confetti) setConfettiSeed(Date.now());
+    if (prefs.sound) playPing();
+    const rect = (ev.target as HTMLElement).getBoundingClientRect();
+    spawnXPFloater(rect, reward);
+    setNice({
+      xp: reward,
+      combo: newCombo,
+      bonus: leveledUp ? `Subiu para o Nv. ${newLevel}!` : reachedGoalNow ? `Streak ${nextStreak}🔥` : bonusLabel,
+    });
+  }, [onUpdateTask, onUpdateGamification, myG, user.uid, prefs.confetti, prefs.sound, focusKW]);
 
   // Filters active?
   const filtersActive = clientFilter !== '__all' || personFilter !== '__all';
@@ -915,9 +979,9 @@ export default function SprintPlanner({
       { id: 'm1', title: 'Concluir 10 tarefas pontuais', progress: Math.min(10, punctualDone), target: 10, sub: 'tarefas pontuais', xp: 50, icon: <Icon.Zap size={18} /> },
       { id: 'm2', title: 'Zerar a segunda-feira', progress: mondayDone, target: Math.max(1, mondayTasks.length), sub: 'tarefas de segunda', xp: 80, icon: <Icon.Target size={18} /> },
       { id: 'm3', title: 'Manter streak de 14 dias', progress: myG.streak, target: 14, sub: 'dias seguidos', xp: 120, icon: <Icon.Flame size={18} /> },
-      { id: 'm4', title: 'Combo x5', progress: Math.max(combo, 0), target: 5, sub: 'tarefas em sequência', xp: 60, icon: <Icon.Trophy size={18} /> },
+      { id: 'm4', title: 'Combo x5', progress: Math.max(currentCombo, 0), target: 5, sub: 'tarefas em sequência', xp: 60, icon: <Icon.Trophy size={18} /> },
     ];
-  }, [allVisibleTasks, sprintDays, myG.streak, combo]);
+  }, [allVisibleTasks, sprintDays, myG.streak, currentCombo]);
 
   // Account info (header / right panel user card)
   const accountName = user.displayName || user.email?.split('@')[0] || 'Você';
@@ -926,6 +990,43 @@ export default function SprintPlanner({
 
   // Tweaks panel toggle
   const [tweaksOpen, setTweaksOpen] = useState(false);
+
+  // Daily goal — exibido no header
+  const dailyGoalTarget = myG.dailyGoal ?? DEFAULT_DAILY_GOAL;
+  const dailyGoalToday = myG.dailyCountedDate === todayISO() ? (myG.dailyCompleted ?? 0) : 0;
+
+  // Foco da semana — editor inline
+  const [focusEditing, setFocusEditing] = useState(false);
+  const [focusDraft, setFocusDraft] = useState('');
+  const [focusCollapsed, setFocusCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('sprint_focus_collapsed') === 'true';
+  });
+  useEffect(() => {
+    localStorage.setItem('sprint_focus_collapsed', String(focusCollapsed));
+  }, [focusCollapsed]);
+  useEffect(() => {
+    setFocusDraft(sprintFocus?.text ?? '');
+  }, [sprintFocus?.text, currentWeekId]);
+  const saveFocus = () => {
+    onUpdateSprintFocus({
+      weekId: currentWeekId,
+      text: focusDraft.trim(),
+      updatedBy: user.uid,
+    });
+    setFocusEditing(false);
+  };
+  const focusKWCount = focusKW.length;
+  const focusedTasksDone = useMemo(() => {
+    if (!focusKWCount) return { done: 0, total: 0 };
+    let done = 0, total = 0;
+    for (const t of allVisibleTasks) {
+      if (taskMatchesFocus(t.title, focusKW)) {
+        total++;
+        if (t.completed) done++;
+      }
+    }
+    return { done, total };
+  }, [allVisibleTasks, focusKW, focusKWCount]);
 
   return (
     <div ref={scopeRef} className="sprint-scope">
@@ -948,7 +1049,13 @@ export default function SprintPlanner({
                 </p>
               </div>
               <div style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <div className="chip chip--streak" title="Sequência de dias batendo meta">
+                <div className="chip chip--goal" title={`Meta diária: ${dailyGoalToday}/${dailyGoalTarget} tarefas`}>
+                  <span className="chip__icon"><Icon.Target size={16} /></span>
+                  <span>{dailyGoalToday}/{dailyGoalTarget}</span>
+                  <span className="chip__bar"><span style={{ width: `${Math.min(100, (dailyGoalToday / dailyGoalTarget) * 100)}%` }} /></span>
+                  <span className="chip__lbl">hoje</span>
+                </div>
+                <div className="chip chip--streak" title={`Sequência de dias batendo meta (recorde: ${myG.bestStreak ?? myG.streak ?? 0})`}>
                   <span className="chip__icon"><Icon.Flame size={16} /></span>
                   <span>{myG.streak}</span>
                   <span className="chip__lbl">dias</span>
@@ -976,6 +1083,56 @@ export default function SprintPlanner({
               </span>
               <button className="date-pill__nav" onClick={() => setCurrentWeekId(addWeeks(currentWeekId, 1))} title="Próxima semana">
                 <Icon.ChevRight size={16} />
+              </button>
+            </div>
+
+            <div className={`focus-band${focusCollapsed ? ' focus-band--collapsed' : ''}`}>
+              <span className="focus-band__icon" title="Foco da semana">🎯</span>
+              {focusEditing ? (
+                <>
+                  <input
+                    className="focus-band__input"
+                    autoFocus
+                    value={focusDraft}
+                    placeholder="Ex: fechar onboarding do cliente X"
+                    onChange={e => setFocusDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') saveFocus();
+                      if (e.key === 'Escape') { setFocusDraft(sprintFocus?.text ?? ''); setFocusEditing(false); }
+                    }}
+                    onBlur={saveFocus}
+                  />
+                </>
+              ) : sprintFocus?.text ? (
+                <>
+                  <button
+                    className="focus-band__text"
+                    onClick={() => setFocusEditing(true)}
+                    title="Clique para editar"
+                  >
+                    {sprintFocus.text}
+                  </button>
+                  {!focusCollapsed && focusedTasksDone.total > 0 && (
+                    <span className="focus-band__progress">
+                      {focusedTasksDone.done}/{focusedTasksDone.total} tarefas alinhadas
+                    </span>
+                  )}
+                </>
+              ) : (
+                <button
+                  className="focus-band__placeholder"
+                  onClick={() => setFocusEditing(true)}
+                >
+                  Defina o foco desta semana
+                </button>
+              )}
+              <button
+                className="focus-band__toggle"
+                onClick={() => setFocusCollapsed(v => !v)}
+                title={focusCollapsed ? 'Expandir' : 'Recolher'}
+                aria-label={focusCollapsed ? 'Expandir foco' : 'Recolher foco'}
+              >
+                {focusCollapsed ? '+' : '–'}
               </button>
             </div>
           </header>
@@ -1316,10 +1473,10 @@ export default function SprintPlanner({
         </div>
       </div>
 
-      <ComboBanner multiplier={combo} />
+      <ComboBanner multiplier={currentCombo} />
 
       {nice && prefs.confetti && <Confetti seed={confettiSeed} />}
-      {nice && <NicePopup xp={nice.xp} combo={nice.combo} onDone={() => setNice(null)} />}
+      {nice && <NicePopup xp={nice.xp} combo={nice.combo} bonus={nice.bonus} onDone={() => setNice(null)} />}
 
       {tweaksOpen && (
         <div role="dialog"

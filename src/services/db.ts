@@ -14,13 +14,14 @@ import {
   deleteField
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Client, WeeklyTask, TeamMember, FinancialTransaction, UserGamification } from '../types';
+import { Client, WeeklyTask, TeamMember, FinancialTransaction, UserGamification, SprintFocus } from '../types';
 import { toast } from '../components/Toast';
 
 const CLIENTS_COLLECTION = 'clients';
 const TASKS_COLLECTION = 'weeklyTasks';
 const TEAM_COLLECTION = 'teamMembers';
 const GAMIFICATION_COLLECTION = 'gamification';
+const SPRINT_FOCUS_COLLECTION = 'sprintFocus';
 
 // Helper to remove undefined fields which Firestore rejects
 const sanitize = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
@@ -291,5 +292,20 @@ export const dbService = {
       const { userId, ...data } = entry;
       await setDoc(doc(db, GAMIFICATION_COLLECTION, userId), { ...data, updatedAt: Date.now() }, { merge: true });
     } catch (e) { handleError(e, "Atualizar Gamificação"); }
+  },
+
+  // Sprint focus — texto curto compartilhado entre o time por semana
+  subscribeToSprintFocus: (weekId: string, callback: (focus: SprintFocus | null) => void) => {
+    return onSnapshot(doc(db, SPRINT_FOCUS_COLLECTION, weekId), (snap) => {
+      if (!snap.exists()) { callback(null); return; }
+      callback({ ...(snap.data() as Omit<SprintFocus, 'weekId'>), weekId: snap.id });
+    }, (error) => handleError(error, "Ler Foco da Semana"));
+  },
+
+  upsertSprintFocus: async (focus: SprintFocus) => {
+    try {
+      const { weekId, ...data } = focus;
+      await setDoc(doc(db, SPRINT_FOCUS_COLLECTION, weekId), { ...data, updatedAt: Date.now() }, { merge: true });
+    } catch (e) { handleError(e, "Atualizar Foco da Semana"); }
   },
 };
