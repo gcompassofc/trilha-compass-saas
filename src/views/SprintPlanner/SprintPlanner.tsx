@@ -54,16 +54,16 @@ const DEFAULT_PREFS: Prefs = {
 };
 
 const PREFS_KEY = 'sprint_planner_prefs';
-const PREFS_VERSION = 3;
+const PREFS_VERSION = 4;
 
 function loadPrefs(): Prefs {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
     if (!raw) return DEFAULT_PREFS;
     const parsed = JSON.parse(raw) as Partial<Prefs> & { __v?: number };
-    // Migration: force ranking off by default; users opt-in by clicking the dock toggle.
+    // Migration: force ranking off and sound on for everyone on this version bump.
     if ((parsed.__v ?? 0) < PREFS_VERSION) {
-      return { ...DEFAULT_PREFS, ...parsed, showRightPanel: false };
+      return { ...DEFAULT_PREFS, ...parsed, showRightPanel: false, sound: true };
     }
     return { ...DEFAULT_PREFS, ...parsed };
   } catch {
