@@ -53,6 +53,7 @@ export interface WeeklyTask {
   day: DayOfWeek;
   clientId?: string;
   masterTaskId?: string;
+  ritualId?: string; // Source DailyRitual id when this task was auto-materialized.
   title: string;
   completed: boolean;
   order: number;
@@ -69,6 +70,19 @@ export interface WeeklyTask {
   estimatedMinutes?: number;
   kind?: TaskKind;
   xpAwarded?: boolean; // anti-exploit: true após creditar XP na primeira conclusão
+}
+
+export interface DailyRitual {
+  id: string;
+  title: string;
+  position: 'top' | 'bottom';
+  clientId?: string;
+  responsibles?: string[];
+  estimatedMinutes?: number;
+  kind?: TaskKind;
+  daysOfWeek?: DayOfWeek[]; // empty/undefined = every weekday Mon–Fri
+  order: number;
+  createdAt: number;
 }
 
 export interface UserGamification {

@@ -14,7 +14,7 @@ import {
   deleteField
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Client, WeeklyTask, TeamMember, FinancialTransaction, UserGamification, SprintFocus } from '../types';
+import { Client, WeeklyTask, TeamMember, FinancialTransaction, UserGamification, SprintFocus, DailyRitual } from '../types';
 import { toast } from '../components/Toast';
 
 const CLIENTS_COLLECTION = 'clients';
@@ -22,6 +22,7 @@ const TASKS_COLLECTION = 'weeklyTasks';
 const TEAM_COLLECTION = 'teamMembers';
 const GAMIFICATION_COLLECTION = 'gamification';
 const SPRINT_FOCUS_COLLECTION = 'sprintFocus';
+const RITUALS_COLLECTION = 'dailyRituals';
 
 // Helper to remove undefined fields which Firestore rejects
 const sanitize = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
@@ -307,5 +308,35 @@ export const dbService = {
       const { weekId, ...data } = focus;
       await setDoc(doc(db, SPRINT_FOCUS_COLLECTION, weekId), { ...data, updatedAt: Date.now() }, { merge: true });
     } catch (e) { handleError(e, "Atualizar Foco da Semana"); }
+  },
+
+  // Daily rituals — templates that materialize as WeeklyTask instances per day.
+  subscribeToDailyRituals: (callback: (rituals: DailyRitual[]) => void) => {
+    const q = collection(db, RITUALS_COLLECTION);
+    return onSnapshot(q, (snapshot) => {
+      const rituals = snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as DailyRitual[];
+      rituals.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      callback(rituals);
+    }, (error) => handleError(error, "Listar Rituais"));
+  },
+
+  addDailyRitual: async (ritual: Omit<DailyRitual, 'id'>) => {
+    try {
+      const docRef = await addDoc(collection(db, RITUALS_COLLECTION), sanitize(ritual));
+      return docRef.id;
+    } catch (e) { handleError(e, "Adicionar Ritual"); }
+  },
+
+  updateDailyRitual: async (ritual: DailyRitual) => {
+    try {
+      const { id, ...data } = ritual;
+      await updateDoc(doc(db, RITUALS_COLLECTION, id), sanitizeForUpdate(data));
+    } catch (e) { handleError(e, "Atualizar Ritual"); }
+  },
+
+  deleteDailyRitual: async (id: string) => {
+    try {
+      await deleteDoc(doc(db, RITUALS_COLLECTION, id));
+    } catch (e) { handleError(e, "Deletar Ritual"); }
   },
 };

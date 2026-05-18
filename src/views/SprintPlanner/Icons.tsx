@@ -102,4 +102,28 @@ export const Icon = {
   Plus: ({ size = 14 }: IconProps) => wrap(
     <path d="M12 5v14M5 12h14" />, size, 2,
   ),
+  Grip: ({ size = 14 }: IconProps) => wrap(
+    <>
+      <circle cx="9" cy="6" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="18" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="6" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="18" r="1.2" fill="currentColor" stroke="none" />
+    </>, size,
+  ),
+  Trash: ({ size = 14 }: IconProps) => wrap(
+    <>
+      <path d="M4 7h16" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12" />
+      <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+    </>, size,
+  ),
+  Edit: ({ size = 14 }: IconProps) => wrap(
+    <>
+      <path d="M4 20h4l11-11-4-4L4 16v4Z" />
+      <path d="M14 5l4 4" />
+    </>, size,
+  ),
 };

@@ -14,7 +14,7 @@ import Login from './components/Login';
 import GlobalSearch from './components/GlobalSearch';
 import ToastContainer from './components/Toast';
 import { Search } from 'lucide-react';
-import { Client, WeeklyTask, DayOfWeek, TeamMember, FinancialTransaction, UserGamification, SprintFocus } from './types';
+import { Client, WeeklyTask, DayOfWeek, TeamMember, FinancialTransaction, UserGamification, SprintFocus, DailyRitual } from './types';
 import { dbService } from './services/db';
 import { auth, db } from './firebase/config';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -36,6 +36,7 @@ export default function App() {
   const [gamification, setGamification] = useState<UserGamification[]>([]);
   const [sprintFocus, setSprintFocus] = useState<SprintFocus | null>(null);
   const [incompleteTasks, setIncompleteTasks] = useState<WeeklyTask[]>([]);
+  const [dailyRituals, setDailyRituals] = useState<DailyRitual[]>([]);
   const [currentWeekId, setCurrentWeekId] = useState(getWeekId(new Date()));
   const [loading, setLoading] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -92,12 +93,17 @@ export default function App() {
       setIncompleteTasks(data);
     });
 
+    const unsubRituals = dbService.subscribeToDailyRituals((data) => {
+      setDailyRituals(data);
+    });
+
     return () => {
       unsubClients();
       unsubTeam();
       unsubTransactions();
       unsubGamification();
       unsubIncomplete();
+      unsubRituals();
     };
   }, [user]);
 
@@ -426,10 +432,16 @@ export default function App() {
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
                 onAddTask={handleAddTask}
+                onReorderTasks={handleReorderTasks}
+                onReorderClients={handleReorderClients}
                 gamification={gamification}
                 onUpdateGamification={dbService.upsertUserGamification}
                 sprintFocus={sprintFocus}
                 onUpdateSprintFocus={dbService.upsertSprintFocus}
+                rituals={dailyRituals}
+                onAddRitual={dbService.addDailyRitual}
+                onUpdateRitual={dbService.updateDailyRitual}
+                onDeleteRitual={dbService.deleteDailyRitual}
               />
             </motion.div>
           )}

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { User } from 'firebase/auth';
-import { Client, DayOfWeek, SprintFocus, SubTask, TaskComment, TaskKind, TaskType, TeamMember, UserGamification, WeeklyTask } from '../../types';
+import { Client, DailyRitual, DayOfWeek, SprintFocus, SubTask, TaskComment, TaskKind, TaskType, TeamMember, UserGamification, WeeklyTask } from '../../types';
+import { Reorder, useDragControls } from 'motion/react';
 import { Icon } from './Icons';
 import { buildRanking, clientById, SprintDayView, SprintTaskView, toSprintWeek, toTaskView } from './adapter';
 import { BADGES, badgeById, COMBO_TTL_MS, DEFAULT_DAILY_GOAL, focusKeywords, fmtMinutes, levelFromXp, newlyEarnedBadges, parseTimeText, pickVoiceLine, playPing, playSound, rewardForTask, spawnXPFloater, taskMatchesFocus, todayISO, daysBetween } from './utils';
@@ -19,10 +20,16 @@ interface SprintPlannerProps {
   onUpdateTask: (task: WeeklyTask) => void;
   onDeleteTask: (id: string) => void;
   onAddTask: (task: Omit<WeeklyTask, 'id'>) => void;
+  onReorderTasks: (day: DayOfWeek, tasks: WeeklyTask[]) => void;
+  onReorderClients: (clients: Client[]) => void;
   gamification: UserGamification[];
   onUpdateGamification: (entry: UserGamification) => void;
   sprintFocus: SprintFocus | null;
   onUpdateSprintFocus: (focus: SprintFocus) => void;
+  rituals: DailyRitual[];
+  onAddRitual: (ritual: Omit<DailyRitual, 'id'>) => void;
+  onUpdateRitual: (ritual: DailyRitual) => void;
+  onDeleteRitual: (id: string) => void;
 }
 
 type ThemePref = 'dark' | 'light';
@@ -168,7 +175,7 @@ function Donut({ pct = 0, size = 100, stroke = 9 }: { pct?: number; size?: numbe
 }
 
 // ── TaskRow ─────────────────────────────────────────────────────────────────
-function TaskRow({ task, clients, team, onToggle, ungrouped, onExpand, expanded }: {
+function TaskRow({ task, clients, team, onToggle, ungrouped, onExpand, expanded, dragControls }: {
   task: SprintTaskView;
   clients: Client[];
   team: TeamMember[];
@@ -176,6 +183,7 @@ function TaskRow({ task, clients, team, onToggle, ungrouped, onExpand, expanded 
   ungrouped: boolean;
   onExpand: () => void;
   expanded: boolean;
+  dragControls?: ReturnType<typeof useDragControls>;
 }) {
   const tagClass =
     task.kind === 'recorrente' ? 'tag tag--recorrente'
@@ -191,7 +199,18 @@ function TaskRow({ task, clients, team, onToggle, ungrouped, onExpand, expanded 
     : `linear-gradient(180deg, ${colors.join(', ')})`;
   const timeLabel = task.estimatedMinutes > 0 ? fmtMinutes(task.estimatedMinutes) : '—';
   return (
-    <div className={'task' + (ungrouped ? ' task--ungrouped' : '')} data-done={task.completed ? 'true' : 'false'}>
+    <div className={
+      'task' + (ungrouped ? ' task--ungrouped' : '') + (dragControls ? ' task--draggable' : '')
+    } data-done={task.completed ? 'true' : 'false'}>
+      {dragControls && (
+        <span
+          className="task__handle"
+          onPointerDown={(e) => { e.stopPropagation(); dragControls.start(e); }}
+          title="Arrastar para reordenar"
+        >
+          <Icon.Grip size={14} />
+        </span>
+      )}
       <input
         type="checkbox"
         className="task__check"
@@ -201,6 +220,7 @@ function TaskRow({ task, clients, team, onToggle, ungrouped, onExpand, expanded 
       {ungrouped && <span className="task__bar" style={{ background: barBg }} />}
       <div className="task__title">
         <span className="task__title-text" onClick={onExpand} aria-expanded={expanded}>{task.title}</span>
+        {task.raw.ritualId && <span className="task__ritual" title="Ritual diário"><Icon.Flame size={12} /></span>}
         <span className={tagClass}>{kindLabel}</span>
       </div>
       <span className="task__time">
@@ -487,6 +507,62 @@ function TaskDetail({ task, team, clients, currentUserName, onUpdate, onDelete }
   );
 }
 
+// ── ClientReorderArrows — moves a client up/down in the global order ───────
+function ClientReorderArrows({ clientKey, clients, onReorderClients }: {
+  clientKey: string;
+  clients: Client[];
+  onReorderClients: (clients: Client[]) => void;
+}) {
+  // Special groups like "__none" can't be reordered globally — they're synthesized per-day.
+  if (clientKey === '__none' || !clients.some(c => c.id === clientKey)) return null;
+  const sorted = [...clients].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+  const idx = sorted.findIndex(c => c.id === clientKey);
+  const move = (e: React.MouseEvent, delta: -1 | 1) => {
+    e.stopPropagation();
+    const target = idx + delta;
+    if (target < 0 || target >= sorted.length) return;
+    const next = sorted.slice();
+    const [item] = next.splice(idx, 1);
+    next.splice(target, 0, item);
+    onReorderClients(next);
+  };
+  return (
+    <span className="cgroup__arrows" onClick={e => e.stopPropagation()}>
+      <button disabled={idx <= 0} onClick={e => move(e, -1)} title="Subir cliente">
+        <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}><Icon.ChevDown size={11} /></span>
+      </button>
+      <button disabled={idx >= sorted.length - 1} onClick={e => move(e, 1)} title="Descer cliente">
+        <Icon.ChevDown size={11} />
+      </button>
+    </span>
+  );
+}
+
+// ── DraggableTaskItem — each Reorder.Item owns its own drag controls ────────
+interface DraggableTaskItemProps {
+  task: SprintTaskView;
+  children: (controls: ReturnType<typeof useDragControls>) => React.ReactNode;
+}
+function DraggableTaskItem({ task, children }: DraggableTaskItemProps) {
+  const controls = useDragControls();
+  const [dragging, setDragging] = useState(false);
+  return (
+    <Reorder.Item
+      value={task.raw}
+      dragListener={false}
+      dragControls={controls}
+      className="task-wrap"
+      data-dragging={dragging ? 'true' : 'false'}
+      onDragStart={() => setDragging(true)}
+      onDragEnd={() => setDragging(false)}
+      layout="position"
+      transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+    >
+      {children(controls)}
+    </Reorder.Item>
+  );
+}
+
 // ── Group helpers ───────────────────────────────────────────────────────────
 interface ClientGroup {
   key: string;
@@ -748,8 +824,10 @@ function applyTheme(el: HTMLElement | null, prefs: Prefs) {
 // ── Main view ───────────────────────────────────────────────────────────────
 export default function SprintPlanner({
   user, clients, weeklyTasks, teamMembers, incompleteTasks, currentWeekId, setCurrentWeekId,
-  onUpdateTask, onDeleteTask, onAddTask, gamification, onUpdateGamification,
+  onUpdateTask, onDeleteTask, onAddTask, onReorderTasks, onReorderClients,
+  gamification, onUpdateGamification,
   sprintFocus, onUpdateSprintFocus,
+  rituals, onAddRitual, onUpdateRitual, onDeleteRitual,
 }: SprintPlannerProps) {
   const scopeRef = useRef<HTMLDivElement>(null);
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
@@ -801,6 +879,19 @@ export default function SprintPlanner({
   // Task expansion (click on title)
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const toggleExpand = (id: string) => setExpandedTaskId(cur => cur === id ? null : id);
+
+  // Reorder tasks WITHIN a client group — flattens the new order back into the
+  // day's full task list (preserving other groups' positions).
+  const handleReorderInGroup = useCallback((day: DayOfWeek, dayTaskViews: SprintTaskView[], clientKey: string, newGroupTasks: WeeklyTask[]) => {
+    const groups = groupTasksByClient(dayTaskViews, clients);
+    const newGroups = groups.map(g =>
+      g.key === clientKey
+        ? { ...g, tasks: newGroupTasks.map(t => toTaskView(t)) }
+        : g,
+    );
+    const flat = newGroups.flatMap(g => g.tasks.map(t => t.raw));
+    onReorderTasks(day, flat);
+  }, [clients, onReorderTasks]);
 
   // Client groups collapsed by default — toggle open/close per day+client.
   const [openClientGroups, setOpenClientGroups] = useState<Set<string>>(() => {
@@ -898,6 +989,44 @@ export default function SprintPlanner({
     const today = sprintDays.find(d => d.today);
     if (today) setOpenDays(new Set([today.day]));
   }, [currentWeekId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Materialize daily rituals — for each ritual, ensure a WeeklyTask exists for
+  // every applicable day of the current week. Idempotent.
+  const ritualPendingRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!rituals.length) return;
+    const defaultDays: DayOfWeek[] = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
+    for (const r of rituals) {
+      const days = r.daysOfWeek?.length ? r.daysOfWeek : defaultDays;
+      for (const day of days) {
+        const key = `${r.id}|${currentWeekId}|${day}`;
+        if (ritualPendingRef.current.has(key)) continue;
+        const exists = weeklyTasks.some(t => t.ritualId === r.id && t.weekId === currentWeekId && t.day === day);
+        if (exists) continue;
+        ritualPendingRef.current.add(key);
+        const baseOrder = r.position === 'top' ? -1000 + (r.order ?? 0) : 9000 + (r.order ?? 0);
+        onAddTask({
+          weekId: currentWeekId,
+          day,
+          title: r.title,
+          completed: false,
+          order: baseOrder,
+          clientId: r.clientId,
+          ritualId: r.id,
+          kind: r.kind ?? 'recorrente',
+          estimatedMinutes: r.estimatedMinutes,
+          responsibles: r.responsibles?.length ? r.responsibles : undefined,
+        });
+      }
+    }
+    // Clear pending keys whose tasks have now appeared in state.
+    for (const key of Array.from(ritualPendingRef.current)) {
+      const [rid, wid, day] = key.split('|');
+      if (weeklyTasks.some(t => t.ritualId === rid && t.weekId === wid && t.day === (day as DayOfWeek))) {
+        ritualPendingRef.current.delete(key);
+      }
+    }
+  }, [rituals, currentWeekId, weeklyTasks, onAddTask]);
 
   // Overdue tasks (atrasadas) — incomplete tasks from past weeks. Shown at the top
   // so the team knows what to reallocate. Sorted oldest first.
@@ -1166,6 +1295,43 @@ export default function SprintPlanner({
     return { done, total };
   }, [allVisibleTasks, focusKW, focusKWCount]);
 
+  // Ritual editor state — DailyRitual being created (id='__new__') or edited.
+  type RitualDraft = Omit<DailyRitual, 'id' | 'createdAt'> & { id: string };
+  const [editingRitual, setEditingRitual] = useState<RitualDraft | null>(null);
+  const startNewRitual = () => setEditingRitual({
+    id: '__new__',
+    title: '',
+    position: 'top',
+    order: rituals.length,
+    daysOfWeek: ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'],
+  });
+  const startEditRitual = (r: DailyRitual) => setEditingRitual({
+    id: r.id, title: r.title, position: r.position, clientId: r.clientId,
+    responsibles: r.responsibles, estimatedMinutes: r.estimatedMinutes,
+    kind: r.kind, daysOfWeek: r.daysOfWeek?.length ? r.daysOfWeek : ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'],
+    order: r.order,
+  });
+  const saveRitual = () => {
+    if (!editingRitual) return;
+    const title = editingRitual.title.trim();
+    if (!title) return;
+    if (editingRitual.id === '__new__') {
+      const { id: _id, ...rest } = editingRitual;
+      onAddRitual({ ...rest, title, createdAt: Date.now() });
+    } else {
+      const original = rituals.find(r => r.id === editingRitual.id);
+      if (!original) return;
+      onUpdateRitual({ ...original, ...editingRitual, title });
+    }
+    setEditingRitual(null);
+  };
+  const toggleRitualDay = (day: DayOfWeek) => {
+    if (!editingRitual) return;
+    const cur = new Set(editingRitual.daysOfWeek || []);
+    if (cur.has(day)) cur.delete(day); else cur.add(day);
+    setEditingRitual({ ...editingRitual, daysOfWeek: Array.from(cur) });
+  };
+
   return (
     <div ref={scopeRef} className="sprint-scope">
       <div className="shell" style={isMobile ? undefined : { gridTemplateColumns: prefs.showRightPanel ? `0 1fr var(--right-w)` : `0 1fr` }}>
@@ -1431,45 +1597,76 @@ export default function SprintPlanner({
                             <span className="cgroup__dot" style={{ ['--cgroup-color' as any]: g.color } as React.CSSProperties} />
                             <span className="cgroup__name">{g.name}</span>
                             <span className="cgroup__count">{g.tasks.length}</span>
+                            <ClientReorderArrows
+                              clientKey={g.key}
+                              clients={clients}
+                              onReorderClients={onReorderClients}
+                            />
                             <span className="cgroup__time">{fmtMinutes(g.tasks.reduce((a, t) => a + t.estimatedMinutes, 0))}</span>
                             <span className="cgroup__chev"><Icon.ChevDown size={14} /></span>
                           </header>
-                          {groupOpen && g.tasks.map(task => {
-                            const expanded = expandedTaskId === task.id;
-                            return (
-                              <div key={task.id} className="task-wrap">
+                          {groupOpen && (
+                            <Reorder.Group
+                              axis="y"
+                              values={g.tasks.map(t => t.raw)}
+                              onReorder={(newTasks) => handleReorderInGroup(d.day, d.tasks, g.key, newTasks)}
+                              as="div"
+                            >
+                              {g.tasks.map(task => {
+                                const expanded = expandedTaskId === task.id;
+                                return (
+                                  <DraggableTaskItem key={task.id} task={task}>
+                                    {(controls) => (
+                                      <>
+                                        <TaskRow task={task} clients={clients} team={teamMembers}
+                                          onToggle={handleToggleTask} ungrouped={false}
+                                          onExpand={() => toggleExpand(task.id)} expanded={expanded}
+                                          dragControls={controls} />
+                                        {expanded && (
+                                          <TaskDetail task={task} team={teamMembers} clients={clients}
+                                            currentUserName={accountName}
+                                            onUpdate={onUpdateTask}
+                                            onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
+                                        )}
+                                      </>
+                                    )}
+                                  </DraggableTaskItem>
+                                );
+                              })}
+                            </Reorder.Group>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <Reorder.Group
+                      axis="y"
+                      values={d.tasks.map(t => t.raw)}
+                      onReorder={(newTasks) => onReorderTasks(d.day, newTasks)}
+                      as="div"
+                    >
+                      {d.tasks.map(task => {
+                        const expanded = expandedTaskId === task.id;
+                        return (
+                          <DraggableTaskItem key={task.id} task={task}>
+                            {(controls) => (
+                              <>
                                 <TaskRow task={task} clients={clients} team={teamMembers}
-                                  onToggle={handleToggleTask} ungrouped={false}
-                                  onExpand={() => toggleExpand(task.id)} expanded={expanded} />
+                                  onToggle={handleToggleTask} ungrouped={true}
+                                  onExpand={() => toggleExpand(task.id)} expanded={expanded}
+                                  dragControls={controls} />
                                 {expanded && (
                                   <TaskDetail task={task} team={teamMembers} clients={clients}
                                     currentUserName={accountName}
                                     onUpdate={onUpdateTask}
                                     onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
                                 )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    d.tasks.map(task => {
-                      const expanded = expandedTaskId === task.id;
-                      return (
-                        <div key={task.id} className="task-wrap">
-                          <TaskRow task={task} clients={clients} team={teamMembers}
-                            onToggle={handleToggleTask} ungrouped={true}
-                            onExpand={() => toggleExpand(task.id)} expanded={expanded} />
-                          {expanded && (
-                            <TaskDetail task={task} team={teamMembers} clients={clients}
-                              currentUserName={accountName}
-                              onUpdate={onUpdateTask}
-                              onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
-                          )}
-                        </div>
-                      );
-                    })
+                              </>
+                            )}
+                          </DraggableTaskItem>
+                        );
+                      })}
+                    </Reorder.Group>
                   )}
                 </div>
               )}
@@ -1702,6 +1899,99 @@ export default function SprintPlanner({
               />
               <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>
                 Quantas tarefas você precisa concluir no dia para manter a streak.
+              </div>
+            </div>
+
+            {/* Rituais diários */}
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', marginBottom: 8, letterSpacing: '.08em', textTransform: 'uppercase' }}>Rituais diários</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {rituals.map(r => (
+                  <div key={r.id} className="ritual-row">
+                    <div className="ritual-row__main">
+                      <span className="ritual-row__title">{r.title}</span>
+                      <span className="ritual-row__meta">
+                        {r.position === 'top' ? 'topo do dia' : 'fim do dia'}
+                        {r.estimatedMinutes ? ` · ${fmtMinutes(r.estimatedMinutes)}` : ''}
+                        {r.daysOfWeek?.length && r.daysOfWeek.length < 7 ? ` · ${r.daysOfWeek.length} dia(s)` : ''}
+                      </span>
+                    </div>
+                    <button className="ritual-row__btn" onClick={() => startEditRitual(r)} title="Editar">
+                      <Icon.Edit size={14} />
+                    </button>
+                    <button className="ritual-row__btn ritual-row__btn--danger"
+                      onClick={() => { if (confirm(`Excluir ritual "${r.title}"? As instâncias já criadas serão mantidas.`)) onDeleteRitual(r.id); }}
+                      title="Excluir">
+                      <Icon.Trash size={14} />
+                    </button>
+                  </div>
+                ))}
+
+                {editingRitual && (
+                  <div className="ritual-editor">
+                    <input type="text"
+                      autoFocus
+                      placeholder="Ex: Revisar caixa de entrada"
+                      value={editingRitual.title}
+                      onChange={e => setEditingRitual({ ...editingRitual, title: e.target.value })}
+                    />
+                    <div className="task-detail__seg" role="tablist" aria-label="Posição">
+                      <button data-active={editingRitual.position === 'top'} onClick={() => setEditingRitual({ ...editingRitual, position: 'top' })}>No topo</button>
+                      <button data-active={editingRitual.position === 'bottom'} onClick={() => setEditingRitual({ ...editingRitual, position: 'bottom' })}>No fim</button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {(['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'] as DayOfWeek[]).map(d => {
+                        const active = editingRitual.daysOfWeek?.includes(d) ?? false;
+                        const label = d.slice(0, 3).toUpperCase();
+                        return (
+                          <button key={d} className="ritual-day-chip" data-active={active ? 'true' : 'false'} onClick={() => toggleRitualDay(d)}>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <EstimatedTimePicker
+                        value={editingRitual.estimatedMinutes}
+                        onChange={(v: number | undefined) => setEditingRitual({ ...editingRitual, estimatedMinutes: v })}
+                        size="sm"
+                      />
+                      <select className="task-detail__select"
+                        value={editingRitual.kind ?? 'recorrente'}
+                        onChange={e => setEditingRitual({ ...editingRitual, kind: e.target.value as TaskKind })}>
+                        <option value="pontual">Pontual</option>
+                        <option value="recorrente">Recorrente</option>
+                        <option value="urgente">Urgente</option>
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button onClick={saveRitual}
+                        disabled={!editingRitual.title.trim()}
+                        style={{
+                          appearance: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                          background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                          border: 0, color: '#fff', borderRadius: 10, padding: '8px 14px', fontWeight: 600, fontSize: 13,
+                          opacity: editingRitual.title.trim() ? 1 : 0.5,
+                        }}>
+                        Salvar
+                      </button>
+                      <button onClick={() => setEditingRitual(null)}
+                        style={{
+                          appearance: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                          background: 'transparent', border: 0, color: 'var(--text-3)', fontSize: 13, padding: '8px 10px',
+                        }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {!editingRitual && (
+                  <button className="ritual-add-btn" onClick={startNewRitual}>
+                    <Icon.Plus size={14} />
+                    Adicionar ritual
+                  </button>
+                )}
               </div>
             </div>
 

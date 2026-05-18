@@ -795,13 +795,35 @@
   letter-spacing: 0;
 }
 .cgroup__time {
-  margin-left: auto;
   font-size: 11.5px;
   font-weight: 500;
   letter-spacing: .04em;
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
+  margin-left: 6px;
 }
+
+.cgroup__arrows {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  margin-left: auto;
+}
+.cgroup__arrows button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--text-4);
+  cursor: pointer;
+  padding: 0;
+  width: 18px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+}
+.cgroup__arrows button:hover:not(:disabled) { color: var(--text); background: var(--surface-3); }
+.cgroup__arrows button:disabled { opacity: 0.3; cursor: default; }
 .cgroup__head {
   cursor: pointer;
   transition: background .15s ease;
@@ -1141,6 +1163,88 @@
 .subtask__reorder button:hover:not(:disabled) { color: var(--text); background: var(--surface-3); }
 .subtask__reorder button:disabled { opacity: 0.3; cursor: default; }
 
+.ritual-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  font-size: 13px;
+}
+.ritual-row__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ritual-row__title { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ritual-row__meta { color: var(--text-3); font-size: 11.5px; }
+.ritual-row__btn {
+  appearance: none; background: transparent; border: 0; color: var(--text-4);
+  cursor: pointer; padding: 6px; border-radius: 6px; display: grid; place-items: center;
+}
+.ritual-row__btn:hover { color: var(--text); background: var(--surface-3); }
+.ritual-row__btn--danger:hover { color: var(--danger); }
+
+.ritual-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  margin-top: 8px;
+}
+.ritual-editor input[type="text"],
+.ritual-editor select {
+  appearance: none;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 12px;
+  outline: none;
+}
+.ritual-editor input[type="text"]:focus { border-color: var(--accent); }
+
+.ritual-day-chip {
+  appearance: none;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  letter-spacing: .04em;
+}
+.ritual-day-chip[data-active="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+.ritual-add-btn {
+  appearance: none;
+  background: linear-gradient(135deg, var(--accent-soft), transparent);
+  border: 1px dashed var(--hairline-strong);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.ritual-add-btn:hover { background: var(--accent-soft); }
+
 .task-detail__danger {
   appearance: none;
   background: transparent;
@@ -1170,6 +1274,52 @@
   height: 24px;
   border-radius: 2px;
   opacity: .9;
+}
+
+/* Drag handle for reordering */
+.task--draggable { grid-template-columns: auto auto 1fr auto auto; }
+.task--draggable.task--ungrouped { grid-template-columns: auto auto 4px 1fr auto auto; }
+.task__handle {
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  color: var(--text-4);
+  opacity: 0;
+  transition: opacity .15s ease, color .15s ease;
+  touch-action: none;
+  padding: 4px;
+  border-radius: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.task:hover .task__handle { opacity: 1; }
+.task__handle:hover { color: var(--text); background: var(--surface-3); }
+.task__handle:active { cursor: grabbing; }
+
+/* Reorder item — transparent by default; only opaque while dragging so the
+   floating row visually detaches from the list. */
+.task-wrap {
+  list-style: none;
+  background: transparent;
+}
+.task-wrap[data-dragging="true"] {
+  z-index: 50;
+  background: var(--surface-solid);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--accent-soft);
+}
+
+/* Ritual badge inline in title */
+.task__ritual {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: rgba(251, 146, 60, 0.16);
+  color: var(--streak);
+  flex-shrink: 0;
 }
 
 .task__check {
@@ -1879,8 +2029,12 @@
     padding-left: 8px;
     column-gap: 6px;
   }
+  .task--draggable { grid-template-columns: auto auto 1fr; }
+  .task--draggable.task--ungrouped { grid-template-columns: auto auto 3px 1fr; }
   .task__title { padding-left: 2px; row-gap: 6px; }
   .task--ungrouped .task__bar { height: 26px; }
+  /* On touch screens, always show the drag handle */
+  .task__handle { opacity: 1; padding: 6px; color: var(--text-3); }
   .task__title {
     flex-wrap: wrap;
     gap: 6px;
