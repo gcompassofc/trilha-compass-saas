@@ -1322,6 +1322,58 @@
   flex-shrink: 0;
 }
 
+/* Pinned daily-rituals block — fixed at the top of each day, immune to filters. */
+.rituals-pinned {
+  position: relative;
+  margin: 8px 6px 14px;
+  padding: 8px 8px 6px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(251, 146, 60, 0.08), rgba(251, 146, 60, 0.02));
+  border: 1px solid rgba(251, 146, 60, 0.22);
+}
+.rituals-pinned__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--streak);
+}
+.rituals-pinned__count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(251, 146, 60, 0.18);
+  color: var(--streak);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.rituals-pinned .task {
+  background: rgba(251, 146, 60, 0.04);
+  border: 1px solid rgba(251, 146, 60, 0.16);
+  box-shadow: inset 3px 0 0 var(--streak);
+  grid-template-columns: auto 1fr auto auto;
+  padding-left: var(--card-pad-lg);
+}
+.rituals-pinned .task.task--draggable {
+  grid-template-columns: auto auto 1fr auto auto;
+}
+.rituals-pinned .task:hover {
+  background: rgba(251, 146, 60, 0.08);
+}
+.rituals-pinned .task__bar { display: none; }
+/* Redundant inline flame badge — the whole block already signals "ritual". */
+.rituals-pinned .task__ritual { display: none; }
+
 .task__check {
   --c: var(--accent);
   appearance: none;

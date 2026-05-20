@@ -13,6 +13,7 @@ interface SprintPlannerProps {
   user: User;
   clients: Client[];
   weeklyTasks: WeeklyTask[];
+  tasksLoaded: boolean;
   teamMembers: TeamMember[];
   incompleteTasks: WeeklyTask[];
   currentWeekId: string;
@@ -823,7 +824,7 @@ function applyTheme(el: HTMLElement | null, prefs: Prefs) {
 
 // ── Main view ───────────────────────────────────────────────────────────────
 export default function SprintPlanner({
-  user, clients, weeklyTasks, teamMembers, incompleteTasks, currentWeekId, setCurrentWeekId,
+  user, clients, weeklyTasks, tasksLoaded, teamMembers, incompleteTasks, currentWeekId, setCurrentWeekId,
   onUpdateTask, onDeleteTask, onAddTask, onReorderTasks, onReorderClients,
   gamification, onUpdateGamification,
   sprintFocus, onUpdateSprintFocus,
@@ -971,7 +972,8 @@ export default function SprintPlanner({
     return () => clearTimeout(t);
   }, [gamification, user.uid, comboTick]);
 
-  // Build sprint week view
+  // Build sprint week view. Rituals are pinned and never filtered — they always
+  // appear at the top of every day, regardless of client/person filters.
   const sprintDays: SprintDayView[] = useMemo(() => {
     const all = toSprintWeek(weeklyTasks, currentWeekId);
     return all.map(d => ({
@@ -990,15 +992,41 @@ export default function SprintPlanner({
     if (today) setOpenDays(new Set([today.day]));
   }, [currentWeekId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Materialize daily rituals — for each ritual, ensure a WeeklyTask exists for
-  // every applicable day of the current week. Idempotent.
+  // Deduplicate any existing ritual instances — guards against duplicates left
+  // over from earlier sessions where materialization could race the Firestore
+  // subscription. For each (ritualId, weekId, day) group, keep the oldest doc
+  // and delete the rest. Runs only after Firestore has actually responded.
+  const dedupedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!tasksLoaded) return;
+    const groups = new Map<string, WeeklyTask[]>();
+    for (const t of weeklyTasks) {
+      if (!t.ritualId || t.weekId !== currentWeekId) continue;
+      const key = `${t.ritualId}|${t.weekId}|${t.day}`;
+      const arr = groups.get(key) || [];
+      arr.push(t);
+      groups.set(key, arr);
+    }
+    for (const [key, tasks] of groups) {
+      if (tasks.length <= 1) continue;
+      if (dedupedRef.current.has(key)) continue;
+      dedupedRef.current.add(key);
+      const sorted = [...tasks].sort((a, b) => a.id.localeCompare(b.id));
+      for (let i = 1; i < sorted.length; i++) onDeleteTask(sorted[i].id);
+    }
+  }, [tasksLoaded, weeklyTasks, currentWeekId, onDeleteTask]);
+
+  // Materialize daily rituals — rituals are universal: they appear on every
+  // weekday of the current week, regardless of any per-ritual daysOfWeek config.
+  // Gated by tasksLoaded so we don't double-create while Firestore is still
+  // delivering the initial snapshot. Idempotent.
   const ritualPendingRef = useRef<Set<string>>(new Set());
   useEffect(() => {
+    if (!tasksLoaded) return;
     if (!rituals.length) return;
-    const defaultDays: DayOfWeek[] = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
+    const allWeekdays: DayOfWeek[] = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
     for (const r of rituals) {
-      const days = r.daysOfWeek?.length ? r.daysOfWeek : defaultDays;
-      for (const day of days) {
+      for (const day of allWeekdays) {
         const key = `${r.id}|${currentWeekId}|${day}`;
         if (ritualPendingRef.current.has(key)) continue;
         const exists = weeklyTasks.some(t => t.ritualId === r.id && t.weekId === currentWeekId && t.day === day);
@@ -1026,7 +1054,7 @@ export default function SprintPlanner({
         ritualPendingRef.current.delete(key);
       }
     }
-  }, [rituals, currentWeekId, weeklyTasks, onAddTask]);
+  }, [tasksLoaded, rituals, currentWeekId, weeklyTasks, onAddTask]);
 
   // Overdue tasks (atrasadas) — incomplete tasks from past weeks. Shown at the top
   // so the team knows what to reallocate. Sorted oldest first.
@@ -1044,7 +1072,7 @@ export default function SprintPlanner({
 
   const [overdueOpen, setOverdueOpen] = useState(true);
 
-  const allVisibleTasks = useMemo(() => sprintDays.flatMap(d => d.tasks), [sprintDays]);
+  const allVisibleTasks = useMemo(() => sprintDays.flatMap(d => [...d.rituals, ...d.tasks]), [sprintDays]);
   const totalCount = allVisibleTasks.length;
   const doneCount = allVisibleTasks.filter(t => t.completed).length;
   const totalMinutes = allVisibleTasks.reduce((acc, t) => acc + t.estimatedMinutes, 0);
@@ -1325,13 +1353,6 @@ export default function SprintPlanner({
     }
     setEditingRitual(null);
   };
-  const toggleRitualDay = (day: DayOfWeek) => {
-    if (!editingRitual) return;
-    const cur = new Set(editingRitual.daysOfWeek || []);
-    if (cur.has(day)) cur.delete(day); else cur.add(day);
-    setEditingRitual({ ...editingRitual, daysOfWeek: Array.from(cur) });
-  };
-
   return (
     <div ref={scopeRef} className="sprint-scope">
       <div className="shell" style={isMobile ? undefined : { gridTemplateColumns: prefs.showRightPanel ? `0 1fr var(--right-w)` : `0 1fr` }}>
@@ -1515,7 +1536,7 @@ export default function SprintPlanner({
               <header className="day__head" onClick={() => toggleDay(d.day)}>
                 <div className="day__title">
                   {d.day.toUpperCase()}
-                  <span className="day__count">{d.tasks.length}</span>
+                  <span className="day__count">{d.rituals.length + d.tasks.length}</span>
                 </div>
                 <span className="day__head-right">
                   <button className="day__add-btn"
@@ -1583,10 +1604,42 @@ export default function SprintPlanner({
               )}
               {openDays.has(d.day) && (
                 <div className="day__body">
-                  {d.tasks.length === 0 ? (
-                    <div style={{ padding: '28px', color: 'var(--text-3)', fontSize: 13.5, textAlign: 'center' }}>
-                      Nenhuma tarefa nesta visualização.
+                  {d.rituals.length > 0 && (
+                    <div className="rituals-pinned">
+                      <div className="rituals-pinned__head">
+                        <Icon.Flame size={13} />
+                        <span>Rituais do dia</span>
+                        <span className="rituals-pinned__count">{d.rituals.length}</span>
+                      </div>
+                      {d.rituals.map(task => {
+                        const expanded = expandedTaskId === task.id;
+                        // Always render the current ritual title — defends against
+                        // stale instances missing a title field.
+                        const ritual = rituals.find(r => r.id === task.raw.ritualId);
+                        const displayTitle = ritual?.title || task.title || 'Ritual sem título';
+                        const resolved = { ...task, title: displayTitle, raw: { ...task.raw, title: displayTitle } };
+                        return (
+                          <div key={task.id} className="ritual-task-wrap">
+                            <TaskRow task={resolved} clients={clients} team={teamMembers}
+                              onToggle={handleToggleTask} ungrouped={true}
+                              onExpand={() => toggleExpand(task.id)} expanded={expanded} />
+                            {expanded && (
+                              <TaskDetail task={resolved} team={teamMembers} clients={clients}
+                                currentUserName={accountName}
+                                onUpdate={onUpdateTask}
+                                onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
+                  )}
+                  {d.tasks.length === 0 ? (
+                    d.rituals.length === 0 ? (
+                      <div style={{ padding: '28px', color: 'var(--text-3)', fontSize: 13.5, textAlign: 'center' }}>
+                        Nenhuma tarefa nesta visualização.
+                      </div>
+                    ) : null
                   ) : grouped ? (
                     groupTasksByClient(d.tasks, clients).map(g => {
                       const groupKey = `${d.day}_${g.key}`;
@@ -1911,9 +1964,8 @@ export default function SprintPlanner({
                     <div className="ritual-row__main">
                       <span className="ritual-row__title">{r.title}</span>
                       <span className="ritual-row__meta">
-                        {r.position === 'top' ? 'topo do dia' : 'fim do dia'}
+                        Todo dia útil
                         {r.estimatedMinutes ? ` · ${fmtMinutes(r.estimatedMinutes)}` : ''}
-                        {r.daysOfWeek?.length && r.daysOfWeek.length < 7 ? ` · ${r.daysOfWeek.length} dia(s)` : ''}
                       </span>
                     </div>
                     <button className="ritual-row__btn" onClick={() => startEditRitual(r)} title="Editar">
@@ -1935,20 +1987,8 @@ export default function SprintPlanner({
                       value={editingRitual.title}
                       onChange={e => setEditingRitual({ ...editingRitual, title: e.target.value })}
                     />
-                    <div className="task-detail__seg" role="tablist" aria-label="Posição">
-                      <button data-active={editingRitual.position === 'top'} onClick={() => setEditingRitual({ ...editingRitual, position: 'top' })}>No topo</button>
-                      <button data-active={editingRitual.position === 'bottom'} onClick={() => setEditingRitual({ ...editingRitual, position: 'bottom' })}>No fim</button>
-                    </div>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      {(['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'] as DayOfWeek[]).map(d => {
-                        const active = editingRitual.daysOfWeek?.includes(d) ?? false;
-                        const label = d.slice(0, 3).toUpperCase();
-                        return (
-                          <button key={d} className="ritual-day-chip" data-active={active ? 'true' : 'false'} onClick={() => toggleRitualDay(d)}>
-                            {label}
-                          </button>
-                        );
-                      })}
+                    <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>
+                      Aparece fixo no topo de todo dia útil, sem ser afetado por filtros.
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <EstimatedTimePicker

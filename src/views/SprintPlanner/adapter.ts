@@ -16,6 +16,7 @@ export interface SprintDayView {
   day: DayOfWeek;
   date: string; // YYYY-MM-DD
   today: boolean;
+  rituals: SprintTaskView[]; // Pinned at the top of each day, never filtered.
   tasks: SprintTaskView[];
 }
 
@@ -59,11 +60,12 @@ export function toSprintWeek(weeklyTasks: WeeklyTask[], weekId: string): SprintD
   const today = todayISO();
   return DAYS_ORDER.map(day => {
     const date = getDateForDayOfWeek(weekId, day);
-    const tasks = weeklyTasks
+    const dayTasks = weeklyTasks
       .filter(t => t.day === day)
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-      .map(toTaskView);
-    return { day, date, today: date === today, tasks };
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const rituals = dayTasks.filter(t => t.ritualId).map(toTaskView);
+    const tasks = dayTasks.filter(t => !t.ritualId).map(toTaskView);
+    return { day, date, today: date === today, rituals, tasks };
   });
 }
 

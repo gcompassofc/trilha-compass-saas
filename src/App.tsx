@@ -38,6 +38,7 @@ export default function App() {
   const [incompleteTasks, setIncompleteTasks] = useState<WeeklyTask[]>([]);
   const [dailyRituals, setDailyRituals] = useState<DailyRitual[]>([]);
   const [currentWeekId, setCurrentWeekId] = useState(getWeekId(new Date()));
+  const [tasksLoaded, setTasksLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -109,8 +110,10 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
+    setTasksLoaded(false);
     const unsubTasks = dbService.subscribeToTasks(currentWeekId, (data) => {
       setWeeklyTasks(data);
+      setTasksLoaded(true);
     });
     const unsubFocus = dbService.subscribeToSprintFocus(currentWeekId, (data) => {
       setSprintFocus(data);
@@ -425,6 +428,7 @@ export default function App() {
                 user={user}
                 clients={clients}
                 weeklyTasks={weeklyTasks}
+                tasksLoaded={tasksLoaded}
                 teamMembers={teamMembers}
                 incompleteTasks={incompleteTasks}
                 currentWeekId={currentWeekId}
