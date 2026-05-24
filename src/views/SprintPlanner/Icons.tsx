@@ -126,4 +126,14 @@ export const Icon = {
       <path d="M14 5l4 4" />
     </>, size,
   ),
+  AlertTriangle: ({ size = 14 }: IconProps) => wrap(
+    <>
+      <path d="M12 3 2 20h20L12 3Z" />
+      <path d="M12 10v5" />
+      <circle cx="12" cy="17.5" r="0.7" fill="currentColor" stroke="none" />
+    </>, size,
+  ),
+  Play: ({ size = 12 }: IconProps) => wrap(
+    <path d="M7 4v16l13-8L7 4Z" fill="currentColor" stroke="none" />, size,
+  ),
 };

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Upload, X, AlertCircle, CheckCircle2, FileText } from 'lucide-react';
-import { Client, MasterTask, Priority, SubTask, TaskType, TeamMember } from '../types';
+import { Client, MasterTask, Priority, SubTask, TaskStatus, TaskType, TeamMember } from '../types';
 
 interface TaskImporterProps {
   open: boolean;
@@ -11,6 +11,16 @@ interface TaskImporterProps {
   onUpdateClient: (client: Client) => void;
 }
 
+interface ParsedSubTask {
+  title: string;
+  startDate?: string;
+  dueDate?: string;
+  status?: TaskStatus;
+  responsibles: string[];
+  responsibleIds: string[];
+  unmatchedResponsibles: string[];
+}
+
 interface ParsedTask {
   title: string;
   responsibles: string[];
@@ -18,9 +28,12 @@ interface ParsedTask {
   unmatchedResponsibles: string[];
   taskType: TaskType;
   priority: Priority;
-  subTasks: string[];
+  subTasks: ParsedSubTask[];
   rawPriority: string;
   rawType: string;
+  startDate?: string;
+  dueDate?: string;
+  status?: TaskStatus;
 }
 
 interface ParsedSection {
@@ -52,6 +65,40 @@ const TYPE_MAP: Record<string, TaskType> = {
   'overdelivery': 'overdelivery',
   'extra': 'overdelivery',
 };
+
+const STATUS_MAP: Record<string, TaskStatus> = {
+  'em progresso': 'in_progress',
+  'em andamento': 'in_progress',
+  'progresso': 'in_progress',
+  'in_progress': 'in_progress',
+  'in progress': 'in_progress',
+  'doing': 'in_progress',
+  'impedimento': 'blocked',
+  'bloqueado': 'blocked',
+  'blocked': 'blocked',
+  'travado': 'blocked',
+  'concluida': 'done',
+  'concluída': 'done',
+  'feito': 'done',
+  'feita': 'done',
+  'done': 'done',
+  'pronto': 'done',
+};
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Aceita YYYY-MM-DD ou DD/MM/YYYY e devolve sempre YYYY-MM-DD. Retorna undefined se inválido. */
+function parseDateLoose(raw: string): string | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  if (ISO_DATE_RE.test(trimmed)) return trimmed;
+  const br = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (br) {
+    const [, d, m, y] = br;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  return undefined;
+}
 
 const stripBoldMarkers = (s: string) => s.replace(/^\*\*|\*\*$/g, '').trim();
 
@@ -89,12 +136,14 @@ const parseInput = (raw: string, clients: Client[], teamMembers: TeamMember[]): 
 
   let currentSection: ParsedSection | null = null;
   let currentTask: ParsedTask | null = null;
+  let currentSub: ParsedSubTask | null = null;
   let inSubtasks = false;
 
   const flushTask = () => {
     if (!currentTask || !currentSection) return;
     if (currentTask.title) currentSection.tasks.push(currentTask);
     currentTask = null;
+    currentSub = null;
     inSubtasks = false;
   };
 
@@ -108,9 +157,9 @@ const parseInput = (raw: string, clients: Client[], teamMembers: TeamMember[]): 
   //  - it's wrapped in **...** (markdown bold), OR
   //  - it's a known client name, OR
   //  - it's all-uppercase short (<=60 chars)
-  // and it's NOT one of the labeled fields (Demanda/Responsáveis/Tipo/Prioridade/Subtarefas).
+  // and it's NOT one of the labeled fields.
   const isFieldLine = (s: string) =>
-    /^\*?\*?(Demanda|Respons[áa]veis?|Tipo|Prioridade|Subtarefas)\s*:/i.test(s);
+    /^\*?\*?(Demanda|Respons[áa]veis?|Tipo|Prioridade|Subtarefas|In[ií]cio|Entrega|Status)\s*:/i.test(s);
 
   const detectClientHeader = (s: string): { name: string; matched: Client | null } | null => {
     if (isFieldLine(s)) return null;
@@ -129,12 +178,82 @@ const parseInput = (raw: string, clients: Client[], teamMembers: TeamMember[]): 
     return null;
   };
 
+  /** Parseia os labels conhecidos numa linha "trim-mada", aplicando ao alvo (tarefa ou subtarefa). */
+  const applyLabel = (
+    line: string,
+    target: { responsibles: string[]; responsibleIds: string[]; unmatchedResponsibles: string[];
+              startDate?: string; dueDate?: string; status?: TaskStatus; rawType?: string; rawPriority?: string;
+              taskType?: TaskType; priority?: Priority; },
+    opts: { allowTypeAndPriority: boolean },
+  ): boolean => {
+    const respMatch = line.match(/^Respons[áa]veis?\s*:\s*(.+)$/i);
+    if (respMatch) {
+      const names = respMatch[1].split(/[,;]| e /i).map(n => stripBoldMarkers(n).trim()).filter(Boolean);
+      for (const name of names) {
+        const member = findMember(name, teamMembers);
+        if (member) {
+          target.responsibles.push(member.name);
+          target.responsibleIds.push(member.id);
+        } else {
+          target.unmatchedResponsibles.push(name);
+        }
+      }
+      return true;
+    }
+    const startMatch = line.match(/^In[ií]cio\s*:\s*(.+)$/i);
+    if (startMatch) {
+      const parsed = parseDateLoose(stripBoldMarkers(startMatch[1]));
+      if (parsed) target.startDate = parsed;
+      else errors.push(`Data de início inválida: "${startMatch[1].trim()}" (use YYYY-MM-DD ou DD/MM/YYYY).`);
+      return true;
+    }
+    const dueMatch = line.match(/^Entrega\s*:\s*(.+)$/i);
+    if (dueMatch) {
+      const parsed = parseDateLoose(stripBoldMarkers(dueMatch[1]));
+      if (parsed) target.dueDate = parsed;
+      else errors.push(`Data de entrega inválida: "${dueMatch[1].trim()}" (use YYYY-MM-DD ou DD/MM/YYYY).`);
+      return true;
+    }
+    const statusMatch = line.match(/^Status\s*:\s*(.+)$/i);
+    if (statusMatch) {
+      const rawStatus = stripBoldMarkers(statusMatch[1]).trim();
+      const mapped = STATUS_MAP[normalizeName(rawStatus)];
+      if (mapped) target.status = mapped;
+      else errors.push(`Status desconhecido: "${rawStatus}" — use "Em progresso", "Impedimento" ou "Concluída".`);
+      return true;
+    }
+    if (opts.allowTypeAndPriority) {
+      const tipoMatch = line.match(/^Tipo\s*:\s*(.+)$/i);
+      if (tipoMatch) {
+        const rawT = stripBoldMarkers(tipoMatch[1]).trim();
+        target.rawType = rawT;
+        const mapped = TYPE_MAP[normalizeName(rawT)];
+        if (mapped) target.taskType = mapped;
+        return true;
+      }
+      const prioMatch = line.match(/^Prioridade\s*:\s*(.+)$/i);
+      if (prioMatch) {
+        const rawP = stripBoldMarkers(prioMatch[1]).trim();
+        target.rawPriority = rawP;
+        const mapped = PRIORITY_MAP[normalizeName(rawP)];
+        if (mapped) target.priority = mapped;
+        return true;
+      }
+    }
+    return false;
+  };
+
   for (let rawLine of lines) {
+    const isIndented = /^(\s{2,}|\t)/.test(rawLine);
     const line = rawLine.trim();
     if (!line) continue;
-    if (/^---+$/.test(line)) continue;
+    if (/^---+$/.test(line)) {
+      // Separador `---` quebra o "modo subtarefa atual" mas mantém a tarefa.
+      currentSub = null;
+      continue;
+    }
 
-    // Client header check first (so "**SALTUR**" doesn't get eaten as a subtask bullet)
+    // Header de cliente tem precedência (pra não comer "**SALTUR**" como bullet).
     const headerHit = detectClientHeader(line);
     if (headerHit) {
       flushSection();
@@ -150,9 +269,6 @@ const parseInput = (raw: string, clients: Client[], teamMembers: TeamMember[]): 
     }
 
     const demandaMatch = line.match(/^\*?\*?Demanda\s*:\s*(.+?)\*?\*?$/i);
-    const respMatch = line.match(/^Respons[áa]veis?\s*:\s*(.+)$/i);
-    const tipoMatch = line.match(/^Tipo\s*:\s*(.+)$/i);
-    const prioMatch = line.match(/^Prioridade\s*:\s*(.+)$/i);
     const subHeaderMatch = /^Subtarefas\s*:?\s*$/i.test(line);
     const subBulletMatch = line.match(/^[-•]\s*(.+)$/);
 
@@ -173,52 +289,65 @@ const parseInput = (raw: string, clients: Client[], teamMembers: TeamMember[]): 
         rawPriority: '',
         rawType: '',
       };
-      continue;
-    }
-
-    if (currentTask && respMatch) {
-      const names = respMatch[1].split(/[,;]| e /i).map(n => stripBoldMarkers(n).trim()).filter(Boolean);
-      for (const name of names) {
-        const member = findMember(name, teamMembers);
-        if (member) {
-          currentTask.responsibles.push(member.name);
-          currentTask.responsibleIds.push(member.id);
-        } else {
-          currentTask.unmatchedResponsibles.push(name);
-        }
-      }
-      continue;
-    }
-
-    if (currentTask && tipoMatch) {
-      const raw = stripBoldMarkers(tipoMatch[1]).trim();
-      currentTask.rawType = raw;
-      const mapped = TYPE_MAP[normalizeName(raw)];
-      if (mapped) currentTask.taskType = mapped;
-      continue;
-    }
-
-    if (currentTask && prioMatch) {
-      const raw = stripBoldMarkers(prioMatch[1]).trim();
-      currentTask.rawPriority = raw;
-      const mapped = PRIORITY_MAP[normalizeName(raw)];
-      if (mapped) currentTask.priority = mapped;
+      currentSub = null;
+      inSubtasks = false;
       continue;
     }
 
     if (currentTask && subHeaderMatch) {
       inSubtasks = true;
+      currentSub = null;
       continue;
     }
 
-    if (currentTask && inSubtasks && subBulletMatch) {
-      const sub = stripBoldMarkers(subBulletMatch[1]).trim();
-      if (sub) currentTask.subTasks.push(sub);
+    // Bullet de subtarefa: cria nova entrada e fica em "modo subtarefa".
+    if (currentTask && inSubtasks && subBulletMatch && !isIndented) {
+      const subTitle = stripBoldMarkers(subBulletMatch[1]).trim();
+      if (subTitle) {
+        currentSub = {
+          title: subTitle,
+          responsibles: [],
+          responsibleIds: [],
+          unmatchedResponsibles: [],
+        };
+        currentTask.subTasks.push(currentSub);
+      }
       continue;
+    }
+
+    // Linha indentada com label: aplica à subtarefa corrente.
+    if (currentTask && currentSub && isIndented) {
+      const consumed = applyLabel(line, currentSub, { allowTypeAndPriority: false });
+      if (consumed) continue;
+      // Se for indentado mas não bater nenhum label, ignora silenciosamente.
+      continue;
+    }
+
+    // Linha sem indentação: aplica à tarefa principal (e encerra "modo subtarefa atual").
+    if (currentTask) {
+      const consumed = applyLabel(line, currentTask, { allowTypeAndPriority: true });
+      if (consumed) {
+        currentSub = null;
+        continue;
+      }
     }
   }
 
   flushSection();
+
+  // Validação: intervalo invertido.
+  for (const s of sections) {
+    for (const t of s.tasks) {
+      if (t.startDate && t.dueDate && t.startDate > t.dueDate) {
+        errors.push(`"${t.title}": Início (${t.startDate}) é posterior à Entrega (${t.dueDate}).`);
+      }
+      for (const st of t.subTasks) {
+        if (st.startDate && st.dueDate && st.startDate > st.dueDate) {
+          errors.push(`Subtarefa "${st.title}": Início (${st.startDate}) é posterior à Entrega (${st.dueDate}).`);
+        }
+      }
+    }
+  }
 
   return { sections, errors };
 };
@@ -254,21 +383,34 @@ export default function TaskImporter({ open, onClose, clients, teamMembers, onUp
       if (!section.clientId) continue;
       const list = tasksByClientId.get(section.clientId) || [];
       for (const task of section.tasks) {
-        const subTasks: SubTask[] = task.subTasks.map(t => ({
-          id: generateId(),
-          title: t,
-          completed: false,
-        }));
+        const subTasks: SubTask[] = task.subTasks.map(t => {
+          const sub: SubTask = {
+            id: generateId(),
+            title: t.title,
+            completed: t.status === 'done',
+          };
+          if (t.startDate) sub.startDate = t.startDate;
+          if (t.dueDate) sub.dueDate = t.dueDate;
+          if (t.status) sub.status = t.status;
+          if (t.responsibleIds.length > 0) {
+            sub.responsibles = t.responsibleIds;
+            sub.responsible = t.responsibleIds[0];
+          }
+          return sub;
+        });
         const masterTask: MasterTask = {
           id: generateId(),
           title: task.title,
-          completed: false,
+          completed: task.status === 'done',
           priority: task.priority,
           taskType: task.taskType,
           responsibles: task.responsibleIds,
           responsible: task.responsibleIds[0],
           subTasks,
         };
+        if (task.startDate) masterTask.startDate = task.startDate;
+        if (task.dueDate) masterTask.dueDate = task.dueDate;
+        if (task.status) masterTask.status = task.status;
         list.push(masterTask);
       }
       tasksByClientId.set(section.clientId, list);
@@ -336,7 +478,7 @@ export default function TaskImporter({ open, onClose, clients, teamMembers, onUp
                   <textarea
                     value={rawText}
                     onChange={e => setRawText(e.target.value)}
-                    placeholder={`Cole aqui o texto no formato:\n\nNOME DO CLIENTE\n\nDemanda: Título da tarefa\nResponsáveis: Allyson\nTipo: Escopo\nPrioridade: Alta\nSubtarefas:\n- Primeira subtarefa\n- Segunda subtarefa`}
+                    placeholder={`Cole aqui o texto no formato:\n\nNOME DO CLIENTE\n\nDemanda: Título da tarefa\nResponsáveis: Allyson, Maria\nTipo: Escopo\nPrioridade: Alta\nInício: 2026-05-25\nEntrega: 2026-05-30\nStatus: Em progresso\nSubtarefas:\n- Primeira subtarefa\n  Entrega: 2026-05-27\n  Status: Em progresso\n- Segunda subtarefa\n  Responsáveis: Maria\n\nDicas:\n• Datas aceitam YYYY-MM-DD ou DD/MM/YYYY.\n• Status: Em progresso | Impedimento | Concluída.\n• Campos de subtarefa precisam estar indentados (2 espaços ou tab).`}
                     className="gc-input min-h-[280px] font-mono leading-relaxed text-[12px]"
                   />
 
@@ -386,44 +528,92 @@ export default function TaskImporter({ open, onClose, clients, teamMembers, onUp
                           <span className="text-[10px] font-mono text-slate-500">{section.tasks.length} demandas</span>
                         </div>
                         <div className="divide-y divide-white/5">
-                          {section.tasks.map((task, ti) => (
-                            <div key={ti} className="px-4 py-3 space-y-2">
-                              <p className="text-[13px] font-medium text-slate-100">{task.title}</p>
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase font-bold ${
-                                  task.priority === 'high' ? 'bg-rose-500/20 text-rose-400' :
-                                  task.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                                  'bg-emerald-500/20 text-emerald-400'
-                                }`}>
-                                  {task.priority === 'high' ? 'Urgente' : task.priority === 'medium' ? 'Normal' : 'Baixa'}
+                          {section.tasks.map((task, ti) => {
+                            const fmtBR = (iso?: string) => {
+                              if (!iso) return '';
+                              const [y, m, d] = iso.split('-');
+                              return `${d}/${m}`;
+                            };
+                            const statusLabel = (s?: TaskStatus) =>
+                              s === 'in_progress' ? 'Em progresso' :
+                              s === 'blocked' ? 'Impedimento' :
+                              s === 'done' ? 'Concluída' : '';
+                            const statusClass = (s?: TaskStatus) =>
+                              s === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                              s === 'blocked' ? 'bg-amber-500/20 text-amber-400' :
+                              s === 'done' ? 'bg-emerald-500/20 text-emerald-400' : '';
+                            const dateBadge = (start?: string, due?: string) => {
+                              if (!start && !due) return null;
+                              return (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] uppercase font-bold bg-white/5 text-slate-300" title={`${start || '—'} → ${due || '—'}`}>
+                                  📅 {fmtBR(start)}{start && due ? ' → ' : (due ? '→ ' : '')}{fmtBR(due)}
                                 </span>
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase font-bold ${
-                                  task.taskType === 'overdelivery' ? 'bg-purple-500/20 text-purple-400' : 'bg-indigo-500/20 text-indigo-400'
-                                }`}>
-                                  {task.taskType === 'overdelivery' ? 'Overdelivery' : 'Escopo'}
-                                </span>
-                                {task.responsibles.map((r, i) => (
-                                  <span key={i} className="px-1.5 py-0.5 rounded text-[9px] uppercase font-bold bg-white/5 text-slate-300">
-                                    {r.split(' ')[0]}
+                              );
+                            };
+                            return (
+                              <div key={ti} className="px-4 py-3 space-y-2">
+                                <p className="text-[13px] font-medium text-slate-100">{task.title}</p>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase font-bold ${
+                                    task.priority === 'high' ? 'bg-rose-500/20 text-rose-400' :
+                                    task.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                                    'bg-emerald-500/20 text-emerald-400'
+                                  }`}>
+                                    {task.priority === 'high' ? 'Urgente' : task.priority === 'medium' ? 'Normal' : 'Baixa'}
                                   </span>
-                                ))}
-                                {task.unmatchedResponsibles.map((r, i) => (
-                                  <span key={`u${i}`} className="px-1.5 py-0.5 rounded text-[9px] uppercase font-bold bg-rose-500/10 text-rose-400" title="Membro não encontrado">
-                                    ⚠ {r}
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase font-bold ${
+                                    task.taskType === 'overdelivery' ? 'bg-purple-500/20 text-purple-400' : 'bg-indigo-500/20 text-indigo-400'
+                                  }`}>
+                                    {task.taskType === 'overdelivery' ? 'Overdelivery' : 'Escopo'}
                                   </span>
-                                ))}
-                              </div>
-                              {task.subTasks.length > 0 && (
-                                <ul className="space-y-0.5 pt-1">
-                                  {task.subTasks.map((st, si2) => (
-                                    <li key={si2} className="text-[11px] text-slate-400 pl-3 relative before:content-['·'] before:absolute before:left-0 before:text-slate-600">
-                                      {st}
-                                    </li>
+                                  {task.status && (
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase font-bold ${statusClass(task.status)}`}>
+                                      {statusLabel(task.status)}
+                                    </span>
+                                  )}
+                                  {dateBadge(task.startDate, task.dueDate)}
+                                  {task.responsibles.map((r, i) => (
+                                    <span key={i} className="px-1.5 py-0.5 rounded text-[9px] uppercase font-bold bg-white/5 text-slate-300">
+                                      {r.split(' ')[0]}
+                                    </span>
                                   ))}
-                                </ul>
-                              )}
-                            </div>
-                          ))}
+                                  {task.unmatchedResponsibles.map((r, i) => (
+                                    <span key={`u${i}`} className="px-1.5 py-0.5 rounded text-[9px] uppercase font-bold bg-rose-500/10 text-rose-400" title="Membro não encontrado">
+                                      ⚠ {r}
+                                    </span>
+                                  ))}
+                                </div>
+                                {task.subTasks.length > 0 && (
+                                  <ul className="space-y-1 pt-1">
+                                    {task.subTasks.map((st, si2) => (
+                                      <li key={si2} className="text-[11px] text-slate-400 pl-3 relative before:content-['·'] before:absolute before:left-0 before:text-slate-600">
+                                        <span>{st.title}</span>
+                                        {(st.status || st.startDate || st.dueDate || st.responsibles.length > 0) && (
+                                          <span className="ml-2 inline-flex flex-wrap items-center gap-1 align-middle">
+                                            {st.status && (
+                                              <span className={`px-1 py-px rounded text-[9px] uppercase font-bold ${statusClass(st.status)}`}>
+                                                {statusLabel(st.status)}
+                                              </span>
+                                            )}
+                                            {(st.startDate || st.dueDate) && (
+                                              <span className="text-[9.5px] text-slate-500 font-mono">
+                                                {fmtBR(st.startDate)}{st.startDate && st.dueDate ? '→' : (st.dueDate ? '→' : '')}{fmtBR(st.dueDate)}
+                                              </span>
+                                            )}
+                                            {st.responsibles.map((r, i) => (
+                                              <span key={i} className="text-[9.5px] text-slate-500">
+                                                @{r.split(' ')[0]}
+                                              </span>
+                                            ))}
+                                          </span>
+                                        )}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );

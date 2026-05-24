@@ -885,9 +885,12 @@
 .task-wrap + .task-wrap { border-top: 1px solid var(--hairline); }
 .task__title-text { cursor: pointer; }
 
-/* Task detail panel (expanded under task) -------------------------------- */
+/* Task detail panel (expanded under task) --------------------------------
+   Padding reduzido: o alinhamento visual com o título da tarefa-mãe (+38px)
+   custava ~1/3 da largura útil em colunas de dia estreitas. Em troca de uma
+   leve quebra de alinhamento, as subtarefas ganham espaço pro texto. */
 .task-detail {
-  padding: 14px var(--card-pad-lg) 20px calc(var(--card-pad-lg) + 38px);
+  padding: 14px var(--card-pad-lg) 20px var(--card-pad-lg);
   background: rgba(255, 255, 255, 0.015);
   display: flex;
   flex-direction: column;
@@ -1003,6 +1006,16 @@
   border: 0;
   outline: none;
   font-family: inherit;
+  /* Flex: ocupa todo o espaço restante e pode encolher abaixo do conteúdo
+     intrínseco. flex-basis:0 + min-width:0 é o combo "input que se comporta". */
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
+  /* Rede de segurança: se faltar espaço, "…" elegante em vez de corte bruto. */
+  text-overflow: ellipsis;
+  padding: 0;
 }
 .subtask[data-done="true"] .subtask__title { text-decoration: line-through; color: var(--text-3); }
 .subtask__del {
@@ -2346,3 +2359,300 @@
 }
 .stat__num { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--text, #fff); }
 .stat__lbl { font-size: 10.5px; color: var(--text-3, rgba(255,255,255,0.55)); margin-top: 2px; line-height: 1.2; }
+
+/* ── Status & multi-day (v2 — limpo e visual) ──────────────────────────── */
+
+/* Borda esquerda colorida por status — única sinalização permanente.
+   Cores: azul=em progresso, âmbar=impedimento, verde=concluída, neutra=não começou. */
+.task::before {
+  content: '';
+  position: absolute;
+  left: var(--card-pad-lg, 16px);
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background .15s ease;
+  pointer-events: none;
+}
+.task[data-status="in_progress"]::before { background: #3b82f6; }
+.task[data-status="blocked"]::before     { background: #f59e0b; }
+.task[data-status="done"]::before        { background: #10b981; }
+
+/* Tarefa travada ganha um wash âmbar sutil — chama atenção sem ofender */
+.task[data-status="blocked"]      { background: rgba(245, 158, 11, 0.04); }
+.task[data-status="blocked"]:hover{ background: rgba(245, 158, 11, 0.08); }
+
+/* Ícone de alerta APENAS para impedimento (única exceção: a urgência justifica o ícone extra).
+   "Em progresso" e "Concluída" são suficientemente comunicados pela borda + checkbox. */
+.task__status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+.task__status-icon--blocked { color: #f59e0b; background: rgba(245, 158, 11, 0.14); }
+
+/* Chip de posição "X/N" — único elemento que indica multi-dia.
+   Cor neutra no meio, accent no início/entrega. */
+.task__range-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-3);
+  border: 1px solid var(--hairline);
+}
+.task__range-chip--start  { color: #10b981; background: rgba(16, 185, 129, 0.10); border-color: rgba(16, 185, 129, 0.24); }
+.task__range-chip--end    { color: #f59e0b; background: rgba(245, 158, 11, 0.10); border-color: rgba(245, 158, 11, 0.28); }
+.task__range-chip-num { letter-spacing: 0.02em; }
+
+/* Segmented control de status — usa cores por estado */
+.task-detail__seg--status button[data-active="true"][data-status="in_progress"] {
+  background: rgba(59, 130, 246, 0.16);
+  color: #60a5fa;
+}
+.task-detail__seg--status button[data-active="true"][data-status="blocked"] {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+.task-detail__seg--status button[data-active="true"][data-status="done"] {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+}
+.task-detail__seg--sm button {
+  padding: 5px 9px;
+  font-size: 11.5px;
+}
+
+/* Linha primária da tarefa: status + datas alinhados, sem peso de "seção" */
+.task-detail__primary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+.task-detail__primary-spacer { flex: 1 1 auto; }
+
+/* Configurações secundárias — menos peso visual */
+.task-detail__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* Input do motivo do impedimento */
+.task-detail__blocked-reason {
+  width: 100%;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  outline: none;
+}
+.task-detail__blocked-reason:focus { border-color: rgba(245, 158, 11, 0.65); }
+
+/* Date range (Início → Entrega) */
+.task-detail__daterange {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  color: var(--text-3);
+}
+.task-detail__daterange[data-invalid="true"] {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.04);
+}
+.task-detail__daterange .task-detail__date {
+  border: 0;
+  background: transparent;
+  padding: 2px;
+  margin: 0;
+  height: auto;
+  min-width: 110px;
+  color: var(--text);
+}
+.task-detail__daterange--sm {
+  padding: 3px 8px;
+  font-size: 11.5px;
+}
+.task-detail__daterange--sm .task-detail__date { min-width: 96px; font-size: 11.5px; }
+.task-detail__daterange-arrow {
+  color: var(--text-4);
+  font-size: 12px;
+  user-select: none;
+}
+.task-detail__daterange-clear {
+  background: transparent;
+  border: 0;
+  color: var(--text-4);
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+}
+.task-detail__daterange-clear:hover { color: var(--danger, #f43f5e); background: rgba(244, 63, 94, 0.1); }
+.task-detail__warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: #fb7185;
+}
+.task-detail__chip--sm { padding: 3px 8px; font-size: 11.5px; }
+
+/* ── Subtarefa rica ─────────────────────────────────────────────────────── */
+.subtask-rich { position: relative; }
+.subtask-rich + .subtask-rich { border-top: 1px solid var(--hairline); }
+
+/* Borda fina por status na subtarefa (espelha o padrão da tarefa) */
+.subtask-rich[data-status="in_progress"] > .subtask::before,
+.subtask-rich[data-status="blocked"]     > .subtask::before,
+.subtask-rich[data-status="done"]        > .subtask::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+}
+.subtask-rich[data-status="in_progress"] > .subtask::before { background: #3b82f6; }
+.subtask-rich[data-status="blocked"]     > .subtask::before { background: #f59e0b; }
+.subtask-rich[data-status="done"]        > .subtask::before { background: #10b981; }
+.subtask-rich > .subtask { position: relative; }
+
+/* Layout da linha enxuta usando flex (não grid):
+   check (auto) + título (flex:1, shrinkable) + chips (auto) + actions hover (auto) + expand (auto).
+   Flex é mais previsível que grid para <input> ocupar o espaço restante. */
+.subtask--rich {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  /* Anula o grid herdado do .subtask base */
+  grid-template-columns: none;
+}
+.subtask--rich > .subtask__title { flex: 1 1 0; min-width: 0; }
+.subtask--rich > .subtask__check,
+.subtask--rich > .subtask__chips,
+.subtask--rich > .subtask__expand,
+.subtask--rich > .subtask__actions { flex: 0 0 auto; }
+
+/* Cluster de chips à direita do título — todos só aparecem quando setados */
+.subtask__chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.subtask__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.subtask__chip--blocked  { color: #f59e0b; background: rgba(245, 158, 11, 0.14); padding: 3px; }
+.subtask__chip--date     { color: var(--text-3); background: rgba(255,255,255,0.04); border: 1px solid var(--hairline); }
+.subtask__chip--comments { color: var(--text-3); background: rgba(255,255,255,0.04); border: 1px solid var(--hairline); min-width: 16px; justify-content: center; }
+
+/* Ações secundárias só no hover — display:none colapsa o espaço no grid,
+   evitando que os botões "comam" largura quando invisíveis e estourem o título. */
+.subtask__actions {
+  display: none;
+  align-items: center;
+  gap: 2px;
+}
+.subtask:hover .subtask__actions,
+.subtask:focus-within .subtask__actions { display: inline-flex; }
+.subtask__actions button {
+  background: transparent;
+  border: 0;
+  color: var(--text-4);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.subtask__actions button:hover:not(:disabled) { color: var(--text-2); background: var(--surface-3); }
+.subtask__actions button:disabled { opacity: 0.3; cursor: not-allowed; }
+.subtask__actions .subtask__del-btn:hover { color: var(--danger, #f43f5e); background: rgba(244, 63, 94, 0.1); }
+
+/* Botão de expandir — sempre presente mas discreto */
+.subtask__expand {
+  background: transparent;
+  border: 0;
+  color: var(--text-4);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.subtask__expand:hover { color: var(--text-2); background: var(--surface-3); }
+.subtask__expand[data-has-meta="true"] { color: var(--text-3); }
+.subtask__expand[aria-expanded="true"] { color: var(--accent); background: var(--accent-soft); }
+
+/* Painel expandido da subtarefa — espelha o layout primário da tarefa.
+   Pequeno indent à esquerda mantém a noção de hierarquia (filha) sem
+   estourar a largura. */
+.subtask-rich__panel {
+  padding: 12px 12px 14px 26px;
+  background: rgba(255, 255, 255, 0.018);
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.subtask-rich__primary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.subtask-rich__people {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.subtask-rich__comments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.comment--sub {
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.015);
+  border-radius: 8px;
+}
+

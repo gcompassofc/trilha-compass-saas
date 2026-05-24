@@ -2,6 +2,14 @@ export type DayOfWeek = 'Segunda' | 'Terça' | 'Quarta' | 'Quinta' | 'Sexta' | '
 export type Priority = 'low' | 'medium' | 'high';
 export type TaskType = 'scope' | 'overdelivery';
 export type TaskKind = 'pontual' | 'recorrente' | 'urgente';
+export type TaskStatus = 'in_progress' | 'blocked' | 'done';
+
+export interface TaskComment {
+  id: string;
+  authorId: string;
+  text: string;
+  createdAt: number;
+}
 
 export interface SubTask {
   id: string;
@@ -10,13 +18,17 @@ export interface SubTask {
   timeSpent?: number;
   timerStartedAt?: number | null;
   estimatedMinutes?: number;
-}
-
-export interface TaskComment {
-  id: string;
-  authorId: string;
-  text: string;
-  createdAt: number;
+  // Paridade com a tarefa mãe (campos opcionais para retrocompat):
+  status?: TaskStatus;
+  blockedReason?: string;
+  startDate?: string;
+  dueDate?: string;
+  comments?: TaskComment[];
+  responsible?: string;
+  responsibles?: string[];
+  priority?: Priority;
+  taskType?: TaskType;
+  kind?: TaskKind;
 }
 
 export interface MasterTask {
@@ -28,6 +40,7 @@ export interface MasterTask {
   subTasks?: SubTask[];
   responsible?: string;
   phase?: string;
+  startDate?: string;
   dueDate?: string;
   comments?: TaskComment[];
   taskType?: TaskType;
@@ -35,6 +48,8 @@ export interface MasterTask {
   timeSpent?: number;
   timerStartedAt?: number | null;
   estimatedMinutes?: number;
+  status?: TaskStatus;
+  blockedReason?: string;
 }
 
 export interface Client {
@@ -70,6 +85,9 @@ export interface WeeklyTask {
   estimatedMinutes?: number;
   kind?: TaskKind;
   xpAwarded?: boolean; // anti-exploit: true após creditar XP na primeira conclusão
+  startDate?: string; // ISO YYYY-MM-DD. Se setado junto com dueDate, a tarefa ocupa todos os dias do intervalo no sprint.
+  status?: TaskStatus; // 'in_progress' | 'blocked' | 'done'. Ausência = "não começou".
+  blockedReason?: string; // motivo do impedimento (opcional, só faz sentido com status='blocked').
 }
 
 export interface DailyRitual {

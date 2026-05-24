@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { User } from 'firebase/auth';
-import { Client, DailyRitual, DayOfWeek, SprintFocus, SubTask, TaskComment, TaskKind, TaskType, TeamMember, UserGamification, WeeklyTask } from '../../types';
+import { Client, DailyRitual, DayOfWeek, SprintFocus, SubTask, TaskComment, TaskKind, TaskStatus, TaskType, TeamMember, UserGamification, WeeklyTask } from '../../types';
 import { Reorder, useDragControls } from 'motion/react';
 import { Icon } from './Icons';
 import { buildRanking, clientById, SprintDayView, SprintTaskView, toSprintWeek, toTaskView } from './adapter';
@@ -199,10 +199,27 @@ function TaskRow({ task, clients, team, onToggle, ungrouped, onExpand, expanded,
     : colors.length === 1 ? colors[0]
     : `linear-gradient(180deg, ${colors.join(', ')})`;
   const timeLabel = task.estimatedMinutes > 0 ? fmtMinutes(task.estimatedMinutes) : '—';
+
+  // Status efetivo: 'done' tem prioridade se `completed`, mesmo sem status setado.
+  const effectiveStatus = task.completed
+    ? 'done'
+    : task.raw.status ?? null;
+
+  // Multi-dia: mostra um chip único "X/N" com tooltip; muito mais limpo que 3 fitas textuais.
+  const rangePos = task.rangePosition;
+  const isMultiDay = task.totalDays > 1 && (rangePos === 'start' || rangePos === 'middle' || rangePos === 'end');
+  const rangeTitle = isMultiDay
+    ? `${rangePos === 'start' ? 'Início' : rangePos === 'end' ? 'Entrega' : 'Em curso'} · dia ${task.dayIndex} de ${task.totalDays} (${task.raw.startDate} → ${task.raw.dueDate})`
+    : undefined;
+
   return (
     <div className={
       'task' + (ungrouped ? ' task--ungrouped' : '') + (dragControls ? ' task--draggable' : '')
-    } data-done={task.completed ? 'true' : 'false'}>
+    }
+      data-done={task.completed ? 'true' : 'false'}
+      data-status={effectiveStatus ?? 'none'}
+      data-range={rangePos}
+    >
       {dragControls && (
         <span
           className="task__handle"
@@ -222,7 +239,20 @@ function TaskRow({ task, clients, team, onToggle, ungrouped, onExpand, expanded,
       <div className="task__title">
         <span className="task__title-text" onClick={onExpand} aria-expanded={expanded}>{task.title}</span>
         {task.raw.ritualId && <span className="task__ritual" title="Ritual diário"><Icon.Flame size={12} /></span>}
+        {effectiveStatus === 'blocked' && (
+          <span className="task__status-icon task__status-icon--blocked"
+            title={task.raw.blockedReason ? `Impedimento: ${task.raw.blockedReason}` : 'Impedimento'}
+          >
+            <Icon.AlertTriangle size={12} />
+          </span>
+        )}
         <span className={tagClass}>{kindLabel}</span>
+        {isMultiDay && (
+          <span className={`task__range-chip task__range-chip--${rangePos}`} title={rangeTitle}>
+            <Icon.Calendar size={11} />
+            <span className="task__range-chip-num">{task.dayIndex}/{task.totalDays}</span>
+          </span>
+        )}
       </div>
       <span className="task__time">
         <Icon.Clock size={14} />
@@ -240,6 +270,283 @@ function TaskRow({ task, clients, team, onToggle, ungrouped, onExpand, expanded,
           );
         })}
       </span>
+    </div>
+  );
+}
+
+// ── SubtaskRich (linha de subtarefa com status + datas + comentários + responsáveis) ──
+function SubtaskRich({
+  subtask, index, siblingsCount, team, currentUserName,
+  onChange, onDelete, onMoveUp, onMoveDown,
+}: {
+  subtask: SubTask;
+  index: number;
+  siblingsCount: number;
+  team: TeamMember[];
+  currentUserName: string;
+  onChange: (next: SubTask) => void;
+  onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const comments = subtask.comments || [];
+  const activeResponsibles = new Set(
+    subtask.responsibles || (subtask.responsible ? [subtask.responsible] : [])
+  );
+  const effectiveStatus: TaskStatus | 'none' = subtask.completed
+    ? 'done'
+    : subtask.status ?? 'none';
+
+  const setStatus = (next: TaskStatus) => {
+    if (next === 'done') {
+      onChange({ ...subtask, status: 'done', completed: true });
+      return;
+    }
+    if (subtask.status === next) {
+      onChange({
+        ...subtask,
+        status: undefined,
+        blockedReason: next === 'blocked' ? undefined : subtask.blockedReason,
+      });
+      return;
+    }
+    onChange({ ...subtask, status: next });
+  };
+
+  const toggleCheck = () => {
+    const wasDone = subtask.completed;
+    onChange({
+      ...subtask,
+      completed: !wasDone,
+      status: !wasDone ? 'done' : subtask.status === 'done' ? undefined : subtask.status,
+    });
+  };
+
+  const toggleResponsible = (memberId: string) => {
+    const cur = new Set(
+      subtask.responsibles || (subtask.responsible ? [subtask.responsible] : [])
+    );
+    if (cur.has(memberId)) cur.delete(memberId);
+    else cur.add(memberId);
+    onChange({ ...subtask, responsibles: Array.from(cur), responsible: undefined });
+  };
+
+  const addComment = () => {
+    const text = newComment.trim();
+    if (!text) return;
+    const c: TaskComment = {
+      id: `sc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      authorId: currentUserName,
+      text,
+      createdAt: Date.now(),
+    };
+    onChange({ ...subtask, comments: [...comments, c] });
+    setNewComment('');
+  };
+
+  const deleteComment = (id: string) =>
+    onChange({ ...subtask, comments: comments.filter(c => c.id !== id) });
+
+  const fmtShort = (iso: string) => {
+    const parts = iso.split('-');
+    return parts.length === 3 ? `${parts[2]}/${parts[1]}` : iso;
+  };
+
+  const dateRangeInvalid = !!(
+    subtask.startDate &&
+    subtask.dueDate &&
+    subtask.startDate > subtask.dueDate
+  );
+  const hasMeta =
+    !!subtask.status ||
+    !!subtask.startDate ||
+    !!subtask.dueDate ||
+    comments.length > 0 ||
+    activeResponsibles.size > 0;
+
+  return (
+    <div className="subtask-rich" data-status={effectiveStatus} data-expanded={expanded ? 'true' : 'false'}>
+      <div className="subtask subtask--rich" data-done={subtask.completed ? 'true' : 'false'}>
+        <input
+          type="checkbox"
+          className="subtask__check"
+          checked={subtask.completed}
+          onChange={toggleCheck}
+        />
+        <input
+          className="subtask__title"
+          size={1}
+          value={subtask.title}
+          onChange={e => onChange({ ...subtask, title: e.target.value })}
+          onBlur={e => { if (!e.target.value.trim()) onDelete(); }}
+        />
+        {/* Cluster direito: chips visíveis só quando há algo */}
+        <span className="subtask__chips">
+          {effectiveStatus === 'blocked' && (
+            <span
+              className="subtask__chip subtask__chip--blocked"
+              title={subtask.blockedReason ? `Impedimento: ${subtask.blockedReason}` : 'Impedimento'}
+            >
+              <Icon.AlertTriangle size={10} />
+            </span>
+          )}
+          {(subtask.startDate || subtask.dueDate) && (
+            <span
+              className="subtask__chip subtask__chip--date"
+              title={`Início ${subtask.startDate || '—'} · Entrega ${subtask.dueDate || '—'}`}
+            >
+              <Icon.Calendar size={10} />
+              {subtask.dueDate ? fmtShort(subtask.dueDate) : fmtShort(subtask.startDate!)}
+            </span>
+          )}
+          {comments.length > 0 && (
+            <span className="subtask__chip subtask__chip--comments" title={`${comments.length} comentário(s)`}>
+              {comments.length}
+            </span>
+          )}
+        </span>
+        {/* Ações secundárias — só aparecem no hover */}
+        <span className="subtask__actions">
+          <button onClick={onMoveUp} disabled={index === 0} title="Mover para cima">
+            <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}>
+              <Icon.ChevDown size={10} />
+            </span>
+          </button>
+          <button onClick={onMoveDown} disabled={index === siblingsCount - 1} title="Mover para baixo">
+            <Icon.ChevDown size={10} />
+          </button>
+          <button onClick={onDelete} title="Remover" className="subtask__del-btn">
+            <Icon.X size={11} />
+          </button>
+        </span>
+        <button
+          className="subtask__expand"
+          data-has-meta={hasMeta ? 'true' : 'false'}
+          onClick={() => setExpanded(v => !v)}
+          aria-expanded={expanded}
+          title={expanded ? 'Recolher detalhes' : 'Detalhes'}
+        >
+          <span style={{
+            display: 'inline-flex',
+            transform: expanded ? 'rotate(180deg)' : 'none',
+            transition: 'transform .15s',
+          }}>
+            <Icon.ChevDown size={12} />
+          </span>
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="subtask-rich__panel">
+          {/* Linha primária: status + datas (idêntico ao padrão da tarefa mãe) */}
+          <div className="subtask-rich__primary">
+            <div className="task-detail__seg task-detail__seg--status task-detail__seg--sm" role="tablist" aria-label="Status">
+              <button data-active={subtask.status === 'in_progress'} data-status="in_progress" onClick={() => setStatus('in_progress')}>Em progresso</button>
+              <button data-active={subtask.status === 'blocked'} data-status="blocked" onClick={() => setStatus('blocked')}>Impedimento</button>
+              <button data-active={subtask.status === 'done' || subtask.completed} data-status="done" onClick={() => setStatus('done')}>Concluída</button>
+            </div>
+            <div className="task-detail__daterange task-detail__daterange--sm" data-invalid={dateRangeInvalid ? 'true' : 'false'} title="Início → Entrega">
+              <Icon.Calendar size={11} />
+              <input
+                type="date"
+                className="task-detail__date"
+                value={subtask.startDate || ''}
+                onChange={e => onChange({ ...subtask, startDate: e.target.value || undefined })}
+                title="Início"
+              />
+              <span className="task-detail__daterange-arrow">→</span>
+              <input
+                type="date"
+                className="task-detail__date"
+                value={subtask.dueDate || ''}
+                onChange={e => onChange({ ...subtask, dueDate: e.target.value || undefined })}
+                title="Entrega"
+              />
+              {(subtask.startDate || subtask.dueDate) && (
+                <button
+                  className="task-detail__daterange-clear"
+                  onClick={() => onChange({ ...subtask, startDate: undefined, dueDate: undefined })}
+                  title="Remover datas"
+                ><Icon.X size={10} /></button>
+              )}
+            </div>
+            <Timer item={subtask} onChange={(next) => onChange({ ...subtask, ...next })} size="xs" />
+            <EstimatedTimePicker
+              value={subtask.estimatedMinutes}
+              onChange={(v) => onChange({ ...subtask, estimatedMinutes: v })}
+              size="xs"
+            />
+          </div>
+          {subtask.status === 'blocked' && (
+            <input
+              className="task-detail__blocked-reason"
+              placeholder="O que está travando? (opcional)"
+              value={subtask.blockedReason ?? ''}
+              onChange={e => onChange({ ...subtask, blockedReason: e.target.value || undefined })}
+            />
+          )}
+          {team.length > 0 && (
+            <div className="subtask-rich__people">
+              {team.map(m => {
+                const active = activeResponsibles.has(m.id);
+                const initials = m.name.split(' ').slice(0, 2).map(s => s[0]).join('').toUpperCase();
+                return (
+                  <button
+                    key={m.id}
+                    className="task-detail__chip task-detail__chip--sm"
+                    data-active={active ? 'true' : 'false'}
+                    onClick={() => toggleResponsible(m.id)}
+                  >
+                    <span className="avatar">
+                      {m.photoUrl ? <img src={m.photoUrl} alt="" /> : <span style={{ fontSize: 9, fontWeight: 700 }}>{initials}</span>}
+                    </span>
+                    {m.name.split(' ')[0]}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="subtask-rich__comments">
+            {comments.map(c => {
+              const author = c.authorId || 'Anônimo';
+              const initials = author.slice(0, 2).toUpperCase();
+              const when = new Date(c.createdAt);
+              const whenLabel = `${String(when.getDate()).padStart(2, '0')}/${String(when.getMonth() + 1).padStart(2, '0')} ${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')}`;
+              return (
+                <div key={c.id} className="comment comment--sub">
+                  <span className="comment__avatar">{initials}</span>
+                  <div>
+                    <div className="comment__head">
+                      <span className="comment__author">{author}</span>
+                      <span className="comment__time">{whenLabel}</span>
+                    </div>
+                    <div className="comment__body">{c.text}</div>
+                  </div>
+                  <button className="comment__del" onClick={() => deleteComment(c.id)} title="Remover">
+                    <Icon.X size={12} />
+                  </button>
+                </div>
+              );
+            })}
+            <div className="subtask--add">
+              <input
+                placeholder="Comentário na subtarefa…"
+                value={newComment}
+                onChange={e => setNewComment(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    addComment();
+                  }
+                }}
+              />
+              <button onClick={addComment}>Comentar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -271,6 +578,29 @@ function TaskDetail({ task, team, clients, currentUserName, onUpdate, onDelete }
   const setKind = (kind: TaskKind) => onUpdate({ ...raw, kind });
   const setType = (taskType: TaskType | undefined) => onUpdate({ ...raw, taskType });
   const setDueDate = (dueDate: string | undefined) => onUpdate({ ...raw, dueDate: dueDate || undefined });
+  const setStartDate = (startDate: string | undefined) => onUpdate({ ...raw, startDate: startDate || undefined });
+  const setStatus = (next: TaskStatus) => {
+    // Toggling 'done' deve sincronizar com `completed` para gamificação não quebrar.
+    if (next === 'done') {
+      onUpdate({ ...raw, status: 'done', completed: true });
+      return;
+    }
+    if (raw.status === next) {
+      // Clique no estado já ativo desfaz — volta para "não começou".
+      onUpdate({
+        ...raw,
+        status: undefined,
+        blockedReason: next === 'blocked' ? undefined : raw.blockedReason,
+      });
+      return;
+    }
+    onUpdate({ ...raw, status: next });
+  };
+  const setBlockedReason = (reason: string) =>
+    onUpdate({ ...raw, blockedReason: reason || undefined });
+
+  // Aviso simples se intervalo estiver invertido.
+  const dateRangeInvalid = !!(raw.startDate && raw.dueDate && raw.startDate > raw.dueDate);
 
   const toggleResponsible = (memberId: string) => {
     const cur = new Set(raw.responsibles || (raw.responsible ? [raw.responsible] : []));
@@ -350,49 +680,97 @@ function TaskDetail({ task, team, clients, currentUserName, onUpdate, onDelete }
         placeholder="Título da tarefa"
       />
 
-      {/* Properties row */}
-      <div>
-        <div className="task-detail__section-title">Propriedades</div>
-        <div className="task-detail__row">
-          <select
-            className="task-detail__select"
-            value={raw.clientId ?? ''}
-            onChange={e => onUpdate({ ...raw, clientId: e.target.value || undefined, masterTaskId: undefined })}
-            title="Cliente"
-          >
-            <option value="">Sem cliente</option>
-            {clients.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-
-          <select className="task-detail__select" value={task.kind} onChange={e => setKind(e.target.value as TaskKind)} title="Tipo da tarefa">
-            <option value="pontual">Pontual</option>
-            <option value="recorrente">Recorrente</option>
-            <option value="urgente">Urgente</option>
-          </select>
-
-          <div className="task-detail__seg" role="tablist" aria-label="Escopo">
-            <button data-active={raw.taskType !== 'overdelivery'} onClick={() => setType('scope')}>Escopo</button>
-            <button data-active={raw.taskType === 'overdelivery'} onClick={() => setType('overdelivery')}>Overdelivery</button>
-          </div>
-
+      {/* Linha primária: status + datas — o "estado" da tarefa num só lugar */}
+      <div className="task-detail__primary">
+        <div className="task-detail__seg task-detail__seg--status" role="tablist" aria-label="Status">
+          <button
+            data-active={raw.status === 'in_progress'}
+            data-status="in_progress"
+            onClick={() => setStatus('in_progress')}
+            title="Em progresso (clique de novo para desfazer)"
+          >Em progresso</button>
+          <button
+            data-active={raw.status === 'blocked'}
+            data-status="blocked"
+            onClick={() => setStatus('blocked')}
+            title="Impedimento (clique de novo para desfazer)"
+          >Impedimento</button>
+          <button
+            data-active={raw.status === 'done' || raw.completed}
+            data-status="done"
+            onClick={() => setStatus('done')}
+            title="Concluída"
+          >Concluída</button>
+        </div>
+        <div className="task-detail__primary-spacer" />
+        <div className="task-detail__daterange" data-invalid={dateRangeInvalid ? 'true' : 'false'} title="Início → Entrega">
+          <Icon.Calendar size={13} />
+          <input
+            type="date"
+            className="task-detail__date"
+            value={raw.startDate || ''}
+            onChange={e => setStartDate(e.target.value)}
+            title="Início"
+          />
+          <span className="task-detail__daterange-arrow">→</span>
           <input
             type="date"
             className="task-detail__date"
             value={raw.dueDate || ''}
             onChange={e => setDueDate(e.target.value)}
-            title="Data de entrega"
+            title="Entrega"
           />
-          {raw.dueDate && (
-            <button className="task-detail__chip" onClick={() => setDueDate(undefined)} title="Remover data">
-              <Icon.X size={12} /> Sem data
-            </button>
+          {(raw.dueDate || raw.startDate) && (
+            <button
+              className="task-detail__daterange-clear"
+              onClick={() => { setDueDate(undefined); setStartDate(undefined); }}
+              title="Remover datas"
+            ><Icon.X size={11} /></button>
           )}
-
-          <Timer item={raw} onChange={onUpdate} size="sm" />
-          <EstimatedTimePicker value={raw.estimatedMinutes} onChange={v => onUpdate({ ...raw, estimatedMinutes: v })} size="sm" />
         </div>
+        {dateRangeInvalid && (
+          <span className="task-detail__warn" title="Início posterior à entrega">
+            <Icon.AlertTriangle size={12} /> Intervalo inválido
+          </span>
+        )}
+      </div>
+
+      {raw.status === 'blocked' && (
+        <input
+          className="task-detail__blocked-reason"
+          placeholder="O que está travando? (opcional)"
+          value={raw.blockedReason ?? ''}
+          onChange={e => setBlockedReason(e.target.value)}
+        />
+      )}
+
+      {/* Configurações secundárias — menos peso visual */}
+      <div className="task-detail__meta">
+        <select
+          className="task-detail__select"
+          value={raw.clientId ?? ''}
+          onChange={e => onUpdate({ ...raw, clientId: e.target.value || undefined, masterTaskId: undefined })}
+          title="Cliente"
+        >
+          <option value="">Sem cliente</option>
+          {clients.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+
+        <select className="task-detail__select" value={task.kind} onChange={e => setKind(e.target.value as TaskKind)} title="Tipo da tarefa">
+          <option value="pontual">Pontual</option>
+          <option value="recorrente">Recorrente</option>
+          <option value="urgente">Urgente</option>
+        </select>
+
+        <div className="task-detail__seg" role="tablist" aria-label="Escopo">
+          <button data-active={raw.taskType !== 'overdelivery'} onClick={() => setType('scope')}>Escopo</button>
+          <button data-active={raw.taskType === 'overdelivery'} onClick={() => setType('overdelivery')}>Overdelivery</button>
+        </div>
+
+        <Timer item={raw} onChange={onUpdate} size="sm" />
+        <EstimatedTimePicker value={raw.estimatedMinutes} onChange={v => onUpdate({ ...raw, estimatedMinutes: v })} size="sm" />
       </div>
 
       {/* Responsibles */}
@@ -426,26 +804,18 @@ function TaskDetail({ task, team, clients, currentUserName, onUpdate, onDelete }
           )}
         </div>
         {subtasks.map((s, idx) => (
-          <div key={s.id} className="subtask" data-done={s.completed ? 'true' : 'false'}>
-            <input type="checkbox" className="subtask__check" checked={s.completed} onChange={() => toggleSubtask(s.id)} />
-            <span className="subtask__reorder">
-              <button onClick={() => moveSubtask(s.id, -1)} disabled={idx === 0} title="Mover para cima">
-                <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}><Icon.ChevDown size={10} /></span>
-              </button>
-              <button onClick={() => moveSubtask(s.id, 1)} disabled={idx === subtasks.length - 1} title="Mover para baixo">
-                <Icon.ChevDown size={10} />
-              </button>
-            </span>
-            <input className="subtask__title" value={s.title}
-              onChange={e => renameSubtask(s.id, e.target.value)}
-              onBlur={e => { if (!e.target.value.trim()) deleteSubtask(s.id); }}
-            />
-            <Timer item={s} onChange={(next) => updateSubtask(s.id, next)} size="xs" />
-            <EstimatedTimePicker value={s.estimatedMinutes} onChange={(v) => updateSubtask(s.id, { estimatedMinutes: v })} size="xs" />
-            <button className="subtask__del" onClick={() => deleteSubtask(s.id)} title="Remover">
-              <Icon.X size={14} />
-            </button>
-          </div>
+          <SubtaskRich
+            key={s.id}
+            subtask={s}
+            index={idx}
+            siblingsCount={subtasks.length}
+            team={team}
+            currentUserName={currentUserName}
+            onChange={(next) => updateSubtask(s.id, next)}
+            onDelete={() => deleteSubtask(s.id)}
+            onMoveUp={() => moveSubtask(s.id, -1)}
+            onMoveDown={() => moveSubtask(s.id, 1)}
+          />
         ))}
         <div className="subtask--add">
           <input

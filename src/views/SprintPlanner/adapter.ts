@@ -1,6 +1,8 @@
 import { Client, DayOfWeek, TaskKind, WeeklyTask, TeamMember } from '../../types';
 import { getDateForDayOfWeek } from '../../utils/dateUtils';
 
+export type RangePosition = 'start' | 'middle' | 'end' | 'single' | 'none';
+
 export interface SprintTaskView {
   id: string;
   title: string;
@@ -10,6 +12,15 @@ export interface SprintTaskView {
   people: string[];
   completed: boolean;
   raw: WeeklyTask;
+  /**
+   * Posição da tarefa neste dia em relação ao intervalo (startDate→dueDate).
+   * 'single' = intervalo de 1 dia ou sem startDate. 'none' = sem intervalo.
+   */
+  rangePosition: RangePosition;
+  /** Posição 1-indexed do dia atual dentro do intervalo. 0 quando não há intervalo. */
+  dayIndex: number;
+  /** Total de dias do intervalo. 0 quando não há intervalo. */
+  totalDays: number;
 }
 
 export interface SprintDayView {
@@ -43,7 +54,12 @@ function uniqueResponsibles(t: WeeklyTask): string[] {
   return list;
 }
 
-export function toTaskView(task: WeeklyTask): SprintTaskView {
+export function toTaskView(
+  task: WeeklyTask,
+  rangePosition: RangePosition = 'none',
+  dayIndex = 0,
+  totalDays = 0,
+): SprintTaskView {
   return {
     id: task.id,
     title: task.title,
@@ -53,18 +69,68 @@ export function toTaskView(task: WeeklyTask): SprintTaskView {
     people: uniqueResponsibles(task),
     completed: task.completed,
     raw: task,
+    rangePosition,
+    dayIndex,
+    totalDays,
   };
+}
+
+/** Conta dias inclusivos entre duas datas ISO (YYYY-MM-DD). */
+function daysInclusive(startISO: string, endISO: string): number {
+  const [sy, sm, sd] = startISO.split('-').map(Number);
+  const [ey, em, ed] = endISO.split('-').map(Number);
+  const start = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+  const ms = end.getTime() - start.getTime();
+  return Math.round(ms / 86400000) + 1;
+}
+
+/**
+ * Decide se uma tarefa aparece num determinado dia D do sprint, e qual a sua
+ * posição relativa ao intervalo (start/middle/end/single).
+ *
+ * Regras:
+ *  - Se `startDate` e `dueDate` estão setados: tarefa aparece em todos os dias entre eles
+ *    (inclusive). Posição = 'start' | 'middle' | 'end' | 'single' (quando start==due).
+ *  - Caso contrário (legacy): tarefa aparece se `t.day === D`. Posição = 'none' (sem fita).
+ */
+function computeRangePosition(task: WeeklyTask, dayDate: string, dayName: DayOfWeek): RangePosition | null {
+  const { startDate, dueDate } = task;
+  if (startDate && dueDate && startDate <= dueDate) {
+    if (dayDate < startDate || dayDate > dueDate) return null;
+    if (startDate === dueDate) return 'single';
+    if (dayDate === startDate) return 'start';
+    if (dayDate === dueDate) return 'end';
+    return 'middle';
+  }
+  // Legacy / sem intervalo: usa o `day` field.
+  if (task.day === dayName) return 'none';
+  return null;
 }
 
 export function toSprintWeek(weeklyTasks: WeeklyTask[], weekId: string): SprintDayView[] {
   const today = todayISO();
   return DAYS_ORDER.map(day => {
     const date = getDateForDayOfWeek(weekId, day);
-    const dayTasks = weeklyTasks
-      .filter(t => t.day === day)
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    const rituals = dayTasks.filter(t => t.ritualId).map(toTaskView);
-    const tasks = dayTasks.filter(t => !t.ritualId).map(toTaskView);
+    const dayEntries: { task: WeeklyTask; position: RangePosition; dayIndex: number; totalDays: number }[] = [];
+    for (const t of weeklyTasks) {
+      const pos = computeRangePosition(t, date, day);
+      if (pos === null) continue;
+      let dayIndex = 0;
+      let totalDays = 0;
+      if (t.startDate && t.dueDate && t.startDate <= t.dueDate) {
+        totalDays = daysInclusive(t.startDate, t.dueDate);
+        dayIndex = daysInclusive(t.startDate, date);
+      }
+      dayEntries.push({ task: t, position: pos, dayIndex, totalDays });
+    }
+    dayEntries.sort((a, b) => (a.task.order ?? 0) - (b.task.order ?? 0));
+    const rituals = dayEntries
+      .filter(e => e.task.ritualId)
+      .map(e => toTaskView(e.task, e.position, e.dayIndex, e.totalDays));
+    const tasks = dayEntries
+      .filter(e => !e.task.ritualId)
+      .map(e => toTaskView(e.task, e.position, e.dayIndex, e.totalDays));
     return { day, date, today: date === today, rituals, tasks };
   });
 }
