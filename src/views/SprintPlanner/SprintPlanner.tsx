@@ -1311,6 +1311,11 @@ export default function SprintPlanner({
   const [newKind, setNewKind] = useState<TaskKind>('pontual');
   const [newEst, setNewEst] = useState<number | undefined>(undefined);
   const [newResp, setNewResp] = useState<string[]>([]);
+  const [newPriority, setNewPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [newTaskType, setNewTaskType] = useState<TaskType>('scope');
+  const [newSubTasks, setNewSubTasks] = useState<Array<{ title: string }>>([]);
+  const [newSubTaskDraft, setNewSubTaskDraft] = useState('');
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
 
   const resetAddForm = () => {
     setAddingForDay(null);
@@ -1319,6 +1324,11 @@ export default function SprintPlanner({
     setNewKind('pontual');
     setNewEst(undefined);
     setNewResp([]);
+    setNewPriority('medium');
+    setNewTaskType('scope');
+    setNewSubTasks([]);
+    setNewSubTaskDraft('');
+    setClientPickerOpen(false);
   };
 
   const startAdd = (day: DayOfWeek) => {
@@ -1335,15 +1345,22 @@ export default function SprintPlanner({
     const clientId = newClient || undefined;
     const dueDate = getDateForDayOfWeek(currentWeekId, addingForDay);
 
+    const mkId = () => (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+    const subTasks: SubTask[] = newSubTasks
+      .map(s => s.title.trim())
+      .filter(t => t.length > 0)
+      .map(t => ({ id: mkId(), title: t, completed: false }));
+
     // Se tem cliente, criar a MasterTask correspondente no backlog do cliente,
     // mantendo o mesmo masterTaskId para a sync bidirecional funcionar.
     let masterTaskId: string | undefined;
     if (clientId) {
       const client = clients.find(c => c.id === clientId);
       if (client) {
-        masterTaskId = (typeof crypto !== 'undefined' && crypto.randomUUID)
-          ? crypto.randomUUID()
-          : Math.random().toString(36).substring(2) + Date.now().toString(36);
+        masterTaskId = mkId();
         onUpdateClient({
           ...client,
           masterTasks: [
@@ -1351,12 +1368,14 @@ export default function SprintPlanner({
               id: masterTaskId,
               title,
               completed: false,
-              priority: 'medium',
+              priority: newPriority,
+              taskType: newTaskType,
               kind: newKind,
               dueDate,
               estimatedMinutes: newEst,
               responsible: newResp[0],
               responsibles: newResp.length ? newResp : undefined,
+              subTasks: subTasks.length ? subTasks : undefined,
             },
             ...client.masterTasks,
           ],
@@ -1374,10 +1393,23 @@ export default function SprintPlanner({
       masterTaskId,
       dueDate: clientId ? dueDate : undefined,
       kind: newKind,
+      priority: newPriority,
+      taskType: newTaskType,
       estimatedMinutes: newEst,
       responsibles: newResp.length ? newResp : undefined,
+      subTasks: subTasks.length ? subTasks : undefined,
     });
     resetAddForm();
+  };
+
+  const addNewSubTaskDraft = () => {
+    const t = newSubTaskDraft.trim();
+    if (!t) return;
+    setNewSubTasks(prev => [...prev, { title: t }]);
+    setNewSubTaskDraft('');
+  };
+  const removeNewSubTask = (index: number) => {
+    setNewSubTasks(prev => prev.filter((_, i) => i !== index));
   };
 
   // Combo + UI feedback state
@@ -1975,7 +2007,9 @@ export default function SprintPlanner({
                   <span className="day__chev"><Icon.ChevDown size={18} /></span>
                 </span>
               </header>
-              {addingForDay === d.day && (
+              {addingForDay === d.day && (() => {
+                const selectedClient = clients.find(c => c.id === newClient);
+                return (
                 <div className="day-add" onClick={e => e.stopPropagation()}>
                   <input
                     autoFocus
@@ -1988,20 +2022,80 @@ export default function SprintPlanner({
                       if (e.key === 'Escape') resetAddForm();
                     }}
                   />
+
                   <div className="day-add__row">
-                    <select className="task-detail__select" value={newClient} onChange={e => setNewClient(e.target.value)} title="Cliente">
-                      <option value="">Sem cliente</option>
-                      {clients.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                    <select className="task-detail__select" value={newKind} onChange={e => setNewKind(e.target.value as TaskKind)} title="Tipo">
+                    {/* Custom client picker (dark, com logo) */}
+                    <div className="day-add__picker">
+                      <button
+                        type="button"
+                        className="day-add__picker-trigger"
+                        onClick={() => setClientPickerOpen(v => !v)}
+                        title="Cliente"
+                      >
+                        {selectedClient ? (
+                          <>
+                            <span className="day-add__client-logo" style={{ backgroundColor: `${selectedClient.color}20`, color: selectedClient.color }}>
+                              {selectedClient.logoUrl ? <img src={selectedClient.logoUrl} alt="" /> : selectedClient.logo}
+                            </span>
+                            <span className="day-add__picker-label">{selectedClient.name}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="day-add__client-logo day-add__client-logo--empty">∅</span>
+                            <span className="day-add__picker-label">Sem cliente</span>
+                          </>
+                        )}
+                        <Icon.ChevDown size={14} />
+                      </button>
+                      {clientPickerOpen && (
+                        <>
+                          <div className="day-add__picker-backdrop" onClick={() => setClientPickerOpen(false)} />
+                          <div className="day-add__picker-menu" role="listbox">
+                            <button
+                              type="button"
+                              className="day-add__picker-option"
+                              data-active={!newClient ? 'true' : 'false'}
+                              onClick={() => { setNewClient(''); setClientPickerOpen(false); }}
+                            >
+                              <span className="day-add__client-logo day-add__client-logo--empty">∅</span>
+                              <span>Sem cliente</span>
+                            </button>
+                            {clients.map(c => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                className="day-add__picker-option"
+                                data-active={newClient === c.id ? 'true' : 'false'}
+                                onClick={() => { setNewClient(c.id); setClientPickerOpen(false); }}
+                              >
+                                <span className="day-add__client-logo" style={{ backgroundColor: `${c.color}20`, color: c.color }}>
+                                  {c.logoUrl ? <img src={c.logoUrl} alt="" /> : c.logo}
+                                </span>
+                                <span>{c.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <select className="task-detail__select day-add__select" value={newKind} onChange={e => setNewKind(e.target.value as TaskKind)} title="Tipo de demanda">
                       <option value="pontual">Pontual</option>
                       <option value="recorrente">Recorrente</option>
                       <option value="urgente">Urgente</option>
                     </select>
+                    <select className="task-detail__select day-add__select" value={newPriority} onChange={e => setNewPriority(e.target.value as 'low' | 'medium' | 'high')} title="Prioridade">
+                      <option value="high">Urgente</option>
+                      <option value="medium">Normal</option>
+                      <option value="low">Baixa</option>
+                    </select>
+                    <select className="task-detail__select day-add__select" value={newTaskType} onChange={e => setNewTaskType(e.target.value as TaskType)} title="Escopo ou Overdelivery">
+                      <option value="scope">Escopo</option>
+                      <option value="overdelivery">Overdelivery</option>
+                    </select>
                     <EstimatedTimePicker value={newEst} onChange={(v: number | undefined) => setNewEst(v)} size="sm" />
                   </div>
+
                   <div className="day-add__row">
                     {teamMembers.length === 0 && (
                       <span style={{ fontSize: 12.5, color: 'var(--text-3)' }}>Sem membros cadastrados.</span>
@@ -2020,6 +2114,34 @@ export default function SprintPlanner({
                       );
                     })}
                   </div>
+
+                  {/* Subtarefas */}
+                  <div className="day-add__subtasks">
+                    <div className="day-add__subtasks-header">Subtarefas {newSubTasks.length > 0 && <span className="day-add__subtasks-count">{newSubTasks.length}</span>}</div>
+                    {newSubTasks.length > 0 && (
+                      <div className="day-add__subtasks-list">
+                        {newSubTasks.map((st, i) => (
+                          <span key={i} className="day-add__subtask-chip">
+                            <span>{st.title}</span>
+                            <button type="button" onClick={() => removeNewSubTask(i)} aria-label="Remover subtarefa">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="day-add__subtask-input">
+                      <input
+                        type="text"
+                        placeholder="Adicionar subtarefa…"
+                        value={newSubTaskDraft}
+                        onChange={e => setNewSubTaskDraft(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { e.preventDefault(); addNewSubTaskDraft(); }
+                        }}
+                      />
+                      <button type="button" onClick={addNewSubTaskDraft} disabled={!newSubTaskDraft.trim()}>+</button>
+                    </div>
+                  </div>
+
                   <div className="day-add__actions">
                     <button className="day-add__submit" disabled={!newTitle.trim()} onClick={submitAdd}>
                       Adicionar
@@ -2029,7 +2151,8 @@ export default function SprintPlanner({
                     </button>
                   </div>
                 </div>
-              )}
+                );
+              })()}
               {openDays.has(d.day) && (
                 <div className="day__body">
                   {d.rituals.length > 0 && (
