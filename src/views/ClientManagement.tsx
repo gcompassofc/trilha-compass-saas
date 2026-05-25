@@ -784,6 +784,21 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                         <Gift className="w-2 h-2" /> OVERDELIVERY
                                       </span>
                                     )}
+                                    {task.kind === 'pontual' && (
+                                      <span className="text-[8px] uppercase font-black tracking-tighter px-2 py-0.5 rounded border bg-cyan-500/20 text-cyan-400 border-cyan-500/20">
+                                        PONTUAL
+                                      </span>
+                                    )}
+                                    {task.kind === 'urgente' && (
+                                      <span className="text-[8px] uppercase font-black tracking-tighter px-2 py-0.5 rounded border bg-rose-500/20 text-rose-400 border-rose-500/20">
+                                        URGENTE
+                                      </span>
+                                    )}
+                                    {task.kind === 'recorrente' && (
+                                      <span className="text-[8px] uppercase font-black tracking-tighter px-2 py-0.5 rounded border bg-sky-500/20 text-sky-400 border-sky-500/20">
+                                        RECORRENTE
+                                      </span>
+                                    )}
                                     <span className={`text-[8px] uppercase font-black tracking-tighter px-2 py-0.5 rounded border ${
                                       taskState === 'done' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                       taskState === 'in_progress' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :

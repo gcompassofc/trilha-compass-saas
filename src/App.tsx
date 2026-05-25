@@ -438,6 +438,7 @@ export default function App() {
                 onAddTask={handleAddTask}
                 onReorderTasks={handleReorderTasks}
                 onReorderClients={handleReorderClients}
+                onUpdateClient={handleUpdateClient}
                 gamification={gamification}
                 onUpdateGamification={dbService.upsertUserGamification}
                 sprintFocus={sprintFocus}

@@ -7,6 +7,7 @@ import { buildRanking, clientById, SprintDayView, SprintTaskView, toSprintWeek, 
 import { BADGES, badgeById, COMBO_TTL_MS, DEFAULT_DAILY_GOAL, focusKeywords, fmtMinutes, levelFromXp, newlyEarnedBadges, parseTimeText, pickVoiceLine, playPing, playSound, rewardForTask, spawnXPFloater, taskMatchesFocus, todayISO, daysBetween } from './utils';
 import Timer from '../../components/Timer';
 import EstimatedTimePicker from '../../components/EstimatedTimePicker';
+import { getDateForDayOfWeek } from '../../utils/dateUtils';
 import './sprint.css';
 
 interface SprintPlannerProps {
@@ -23,6 +24,7 @@ interface SprintPlannerProps {
   onAddTask: (task: Omit<WeeklyTask, 'id'>) => void;
   onReorderTasks: (day: DayOfWeek, tasks: WeeklyTask[]) => void;
   onReorderClients: (clients: Client[]) => void;
+  onUpdateClient: (client: Client) => void;
   gamification: UserGamification[];
   onUpdateGamification: (entry: UserGamification) => void;
   sprintFocus: SprintFocus | null;
@@ -1217,7 +1219,7 @@ function applyTheme(el: HTMLElement | null, prefs: Prefs) {
 // ── Main view ───────────────────────────────────────────────────────────────
 export default function SprintPlanner({
   user, clients, weeklyTasks, tasksLoaded, teamMembers, incompleteTasks, currentWeekId, setCurrentWeekId,
-  onUpdateTask, onDeleteTask, onAddTask, onReorderTasks, onReorderClients,
+  onUpdateTask, onDeleteTask, onAddTask, onReorderTasks, onReorderClients, onUpdateClient,
   gamification, onUpdateGamification,
   sprintFocus, onUpdateSprintFocus,
   rituals, onAddRitual, onUpdateRitual, onDeleteRitual,
@@ -1330,13 +1332,47 @@ export default function SprintPlanner({
     if (!title) return;
     const dayTasks = weeklyTasks.filter(t => t.day === addingForDay && t.weekId === currentWeekId);
     const nextOrder = dayTasks.length ? Math.max(...dayTasks.map(t => t.order ?? 0)) + 1 : 0;
+    const clientId = newClient || undefined;
+    const dueDate = getDateForDayOfWeek(currentWeekId, addingForDay);
+
+    // Se tem cliente, criar a MasterTask correspondente no backlog do cliente,
+    // mantendo o mesmo masterTaskId para a sync bidirecional funcionar.
+    let masterTaskId: string | undefined;
+    if (clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (client) {
+        masterTaskId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : Math.random().toString(36).substring(2) + Date.now().toString(36);
+        onUpdateClient({
+          ...client,
+          masterTasks: [
+            {
+              id: masterTaskId,
+              title,
+              completed: false,
+              priority: 'medium',
+              kind: newKind,
+              dueDate,
+              estimatedMinutes: newEst,
+              responsible: newResp[0],
+              responsibles: newResp.length ? newResp : undefined,
+            },
+            ...client.masterTasks,
+          ],
+        });
+      }
+    }
+
     onAddTask({
       weekId: currentWeekId,
       day: addingForDay,
       title,
       completed: false,
       order: nextOrder,
-      clientId: newClient || undefined,
+      clientId,
+      masterTaskId,
+      dueDate: clientId ? dueDate : undefined,
       kind: newKind,
       estimatedMinutes: newEst,
       responsibles: newResp.length ? newResp : undefined,

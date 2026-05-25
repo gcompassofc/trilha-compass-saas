@@ -50,6 +50,7 @@ export interface MasterTask {
   estimatedMinutes?: number;
   status?: TaskStatus;
   blockedReason?: string;
+  kind?: TaskKind;
 }
 
 export interface Client {
