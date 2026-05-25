@@ -205,6 +205,15 @@ function TaskRow({ task, clients, team, onToggle, ungrouped, onExpand, expanded,
     ? 'done'
     : task.raw.status ?? null;
 
+  const subTasksDone = (task.raw.subTasks || []).filter(st => st.completed).length;
+  const subTasksTotal = (task.raw.subTasks || []).length;
+  const isRunning = task.raw.timerStartedAt || (task.raw.subTasks || []).some(st => st.timerStartedAt);
+  const derivedStatus = task.completed ? 'done' : 
+    (effectiveStatus === 'blocked' ? 'blocked' : 
+      (effectiveStatus === 'in_progress' || isRunning || (subTasksDone > 0 && subTasksDone < subTasksTotal) ? 'in_progress' : 'todo'));
+
+  const mainClient = task.clients.length > 0 ? clientById(clients, task.clients[0]) : null;
+
   // Multi-dia: mostra um chip único "X/N" com tooltip; muito mais limpo que 3 fitas textuais.
   const rangePos = task.rangePosition;
   const isMultiDay = task.totalDays > 1 && (rangePos === 'start' || rangePos === 'middle' || rangePos === 'end');
@@ -239,6 +248,19 @@ function TaskRow({ task, clients, team, onToggle, ungrouped, onExpand, expanded,
       <div className="task__title">
         <span className="task__title-text" onClick={onExpand} aria-expanded={expanded}>{task.title}</span>
         {task.raw.ritualId && <span className="task__ritual" title="Ritual diário"><Icon.Flame size={12} /></span>}
+        {mainClient && (
+          <span className="tag" style={{ background: `${mainClient.color}20`, color: mainClient.color, border: `1px solid ${mainClient.color}40` }} title={mainClient.name}>
+            {mainClient.logo || '🏢'} {mainClient.name.split(' ')[0]}
+          </span>
+        )}
+        <span className="tag" style={{
+          background: derivedStatus === 'done' ? 'rgba(16,185,129,0.1)' : derivedStatus === 'in_progress' ? 'rgba(99,102,241,0.1)' : 'rgba(100,116,139,0.1)',
+          color: derivedStatus === 'done' ? '#34d399' : derivedStatus === 'in_progress' ? '#818cf8' : '#94a3b8',
+          border: '1px solid',
+          borderColor: derivedStatus === 'done' ? 'rgba(16,185,129,0.2)' : derivedStatus === 'in_progress' ? 'rgba(99,102,241,0.2)' : 'rgba(100,116,139,0.2)'
+        }}>
+          {derivedStatus === 'done' ? 'Concluído' : derivedStatus === 'in_progress' ? 'Em progresso' : 'A fazer'}
+        </span>
         {effectiveStatus === 'blocked' && (
           <span className="task__status-icon task__status-icon--blocked"
             title={task.raw.blockedReason ? `Impedimento: ${task.raw.blockedReason}` : 'Impedimento'}
