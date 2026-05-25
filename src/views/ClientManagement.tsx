@@ -736,6 +736,10 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                               {tasks.map((task) => {
                                 const isEditing = editingTaskId === task.id;
                                 const currentResponsibles = task.responsibles || (task.responsible ? [task.responsible] : []);
+                                const subTasksDone = (task.subTasks || []).filter(st => st.completed).length;
+                                const subTasksTotal = (task.subTasks || []).length;
+                                const isRunning = task.timerStartedAt || (task.subTasks || []).some(st => st.timerStartedAt);
+                                const taskState = task.completed ? 'done' : (isRunning || (subTasksDone > 0 && subTasksDone < subTasksTotal) ? 'in_progress' : 'todo');
                                 
                                 return (
                           <motion.div 
@@ -780,6 +784,13 @@ export default function ClientManagement({ clients, teamMembers, onAddClient, on
                                         <Gift className="w-2 h-2" /> OVERDELIVERY
                                       </span>
                                     )}
+                                    <span className={`text-[8px] uppercase font-black tracking-tighter px-2 py-0.5 rounded border ${
+                                      taskState === 'done' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                      taskState === 'in_progress' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                                      'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                    }`}>
+                                      {taskState === 'done' ? 'CONCLUÍDO' : taskState === 'in_progress' ? 'EM PROGRESSO' : 'A FAZER'}
+                                    </span>
 
                                     {currentResponsibles.length > 0 && (
                                       <div className="flex -space-x-1.5 items-center">

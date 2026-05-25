@@ -728,6 +728,9 @@ export default function WeeklyPlanner({
                       const subTasksDone = (task.subTasks || []).filter(st => st.completed).length;
                       const subTasksTotal = (task.subTasks || []).length;
                       const progress = subTasksTotal > 0 ? (subTasksDone / subTasksTotal) * 100 : 0;
+                      const isRunning = task.timerStartedAt || (task.subTasks || []).some(st => st.timerStartedAt);
+                      const taskState = task.completed ? 'done' : (isRunning || (subTasksDone > 0 && subTasksDone < subTasksTotal) ? 'in_progress' : 'todo');
+
                       
                       return (
                         <DraggableWrapper
@@ -749,16 +752,31 @@ export default function WeeklyPlanner({
                           <div className={`flex ${viewMode === 'kanban' ? 'flex-col' : 'flex-col'}`}>
                             {viewMode === 'kanban' ? (
                               <div className="flex flex-col gap-1.5 relative">
-                                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
+                                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 mb-1" onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}>
                                   {client ? (
-                                    <span className="text-[8px] uppercase tracking-wider font-bold truncate max-w-[80px]" style={{ color: client.color }}>
-                                      {client.name}
-                                    </span>
+                                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${client.color}15`, border: `1px solid ${client.color}30` }}>
+                                      {client.logoUrl ? (
+                                        <img src={client.logoUrl} className="w-3 h-3 rounded-full object-cover" />
+                                      ) : (
+                                        <span className="text-[10px] leading-none">{client.logo || '🏢'}</span>
+                                      )}
+                                      <span className="text-[8px] uppercase tracking-wider font-bold truncate max-w-[80px]" style={{ color: client.color }}>
+                                        {client.name}
+                                      </span>
+                                    </div>
                                   ) : (
-                                    <span className="text-[8px] uppercase tracking-wider font-bold text-amber-500">
+                                    <span className="text-[8px] uppercase tracking-wider font-bold text-amber-500 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded-md">
                                       PONTUAL
                                     </span>
                                   )}
+
+                                  <span className={`text-[8px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded border ${
+                                    taskState === 'done' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                    taskState === 'in_progress' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                                    'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                  }`}>
+                                    {taskState === 'done' ? 'CONCLUÍDO' : taskState === 'in_progress' ? 'EM PROGRESSO' : 'A FAZER'}
+                                  </span>
 
                                   {(() => {
                                     const currentResps = task.responsibles || (task.responsible ? [task.responsible] : []);
@@ -907,8 +925,29 @@ export default function WeeklyPlanner({
                                     </span>
                                   )}
 
-                                  <span className="text-[10px] font-medium tracking-wide whitespace-nowrap text-slate-500">
-                                    {client ? client.name : 'Pontual'}
+                                  {client ? (
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md" style={{ backgroundColor: `${client.color}15`, border: `1px solid ${client.color}30` }}>
+                                      {client.logoUrl ? (
+                                        <img src={client.logoUrl} className="w-3.5 h-3.5 rounded-full object-cover" />
+                                      ) : (
+                                        <span className="text-[10px] leading-none">{client.logo || '🏢'}</span>
+                                      )}
+                                      <span className="text-[10px] font-bold tracking-wide whitespace-nowrap" style={{ color: client.color }}>
+                                        {client.name}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] font-bold tracking-wide whitespace-nowrap text-amber-500 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
+                                      PONTUAL
+                                    </span>
+                                  )}
+
+                                  <span className={`text-[9px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded border flex-shrink-0 ml-1 ${
+                                    taskState === 'done' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                    taskState === 'in_progress' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                                    'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                  }`}>
+                                    {taskState === 'done' ? 'CONCLUÍDO' : taskState === 'in_progress' ? 'EM PROGRESSO' : 'A FAZER'}
                                   </span>
 
                                   {task.taskType === 'overdelivery' && (
