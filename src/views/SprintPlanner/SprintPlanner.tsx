@@ -1304,6 +1304,30 @@ export default function SprintPlanner({
     return next;
   });
 
+  // Rituais recolhíveis — estado global (mesmos rituais em todo dia útil), persistido.
+  const [ritualsCollapsed, setRitualsCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('sprint_rituals_collapsed') === 'true';
+  });
+  useEffect(() => {
+    localStorage.setItem('sprint_rituals_collapsed', String(ritualsCollapsed));
+  }, [ritualsCollapsed]);
+
+  // Concluídos escondidos — seção recolhível por dia, fechada por padrão, persistida.
+  const [openDoneDays, setOpenDoneDays] = useState<Set<DayOfWeek>>(() => {
+    try {
+      const raw = localStorage.getItem('sprint_open_done');
+      return raw ? new Set(JSON.parse(raw) as DayOfWeek[]) : new Set();
+    } catch { return new Set(); }
+  });
+  useEffect(() => {
+    localStorage.setItem('sprint_open_done', JSON.stringify(Array.from(openDoneDays)));
+  }, [openDoneDays]);
+  const toggleDoneDay = (d: DayOfWeek) => setOpenDoneDays(prev => {
+    const next = new Set(prev);
+    if (next.has(d)) next.delete(d); else next.add(d);
+    return next;
+  });
+
   // Inline "add task" form state — open per day
   const [addingForDay, setAddingForDay] = useState<DayOfWeek | null>(null);
   const [newTitle, setNewTitle] = useState('');
@@ -2156,13 +2180,15 @@ export default function SprintPlanner({
               {openDays.has(d.day) && (
                 <div className="day__body">
                   {d.rituals.length > 0 && (
-                    <div className="rituals-pinned">
-                      <div className="rituals-pinned__head">
+                    <div className="rituals-pinned" data-collapsed={ritualsCollapsed ? 'true' : 'false'}>
+                      <div className="rituals-pinned__head" onClick={() => setRitualsCollapsed(v => !v)}
+                        role="button" aria-expanded={!ritualsCollapsed}>
                         <Icon.Flame size={13} />
                         <span>Rituais do dia</span>
                         <span className="rituals-pinned__count">{d.rituals.length}</span>
+                        <span className="rituals-pinned__chev"><Icon.ChevDown size={14} /></span>
                       </div>
-                      {d.rituals.map(task => {
+                      {!ritualsCollapsed && d.rituals.map(task => {
                         const expanded = expandedTaskId === task.id;
                         // Always render the current ritual title — defends against
                         // stale instances missing a title field.
@@ -2185,14 +2211,23 @@ export default function SprintPlanner({
                       })}
                     </div>
                   )}
-                  {d.tasks.length === 0 ? (
-                    d.rituals.length === 0 ? (
+                  {(() => {
+                  const pendingTasks = d.tasks.filter(t => !t.completed);
+                  const doneTasks = d.tasks.filter(t => t.completed);
+                  const doneOpen = openDoneDays.has(d.day);
+                  return (<>
+                  {pendingTasks.length === 0 ? (
+                    d.rituals.length === 0 && doneTasks.length === 0 ? (
                       <div style={{ padding: '28px', color: 'var(--text-3)', fontSize: 13.5, textAlign: 'center' }}>
                         Nenhuma tarefa nesta visualização.
                       </div>
+                    ) : doneTasks.length > 0 ? (
+                      <div style={{ padding: '20px 28px', color: 'var(--text-3)', fontSize: 13.5, textAlign: 'center' }}>
+                        Tudo concluído por aqui 🎉
+                      </div>
                     ) : null
                   ) : grouped ? (
-                    groupTasksByClient(d.tasks, clients).map(g => {
+                    groupTasksByClient(pendingTasks, clients).map(g => {
                       const groupKey = `${d.day}_${g.key}`;
                       const groupOpen = openClientGroups.has(groupKey);
                       return (
@@ -2213,7 +2248,7 @@ export default function SprintPlanner({
                             <Reorder.Group
                               axis="y"
                               values={g.tasks.map(t => t.raw)}
-                              onReorder={(newTasks) => handleReorderInGroup(d.day, d.tasks, g.key, newTasks)}
+                              onReorder={(newTasks) => handleReorderInGroup(d.day, pendingTasks, g.key, newTasks)}
                               as="div"
                             >
                               {g.tasks.map(task => {
@@ -2245,11 +2280,11 @@ export default function SprintPlanner({
                   ) : (
                     <Reorder.Group
                       axis="y"
-                      values={d.tasks.map(t => t.raw)}
+                      values={pendingTasks.map(t => t.raw)}
                       onReorder={(newTasks) => onReorderTasks(d.day, newTasks)}
                       as="div"
                     >
-                      {d.tasks.map(task => {
+                      {pendingTasks.map(task => {
                         const expanded = expandedTaskId === task.id;
                         return (
                           <DraggableTaskItem key={task.id} task={task}>
@@ -2272,6 +2307,39 @@ export default function SprintPlanner({
                       })}
                     </Reorder.Group>
                   )}
+                  {doneTasks.length > 0 && (
+                    <div className="done-group" data-open={doneOpen ? 'true' : 'false'}>
+                      <header className="done-group__head" onClick={() => toggleDoneDay(d.day)}
+                        role="button" aria-expanded={doneOpen}>
+                        <Icon.Check size={13} />
+                        <span>Concluídos</span>
+                        <span className="done-group__count">{doneTasks.length}</span>
+                        <span className="done-group__chev"><Icon.ChevDown size={14} /></span>
+                      </header>
+                      {doneOpen && (
+                        <div className="done-group__body">
+                          {doneTasks.map(task => {
+                            const expanded = expandedTaskId === task.id;
+                            return (
+                              <div key={task.id} className="ritual-task-wrap">
+                                <TaskRow task={task} clients={clients} team={teamMembers}
+                                  onToggle={handleToggleTask} ungrouped={true}
+                                  onExpand={() => toggleExpand(task.id)} expanded={expanded} />
+                                {expanded && (
+                                  <TaskDetail task={task} team={teamMembers} clients={clients}
+                                    currentUserName={accountName}
+                                    onUpdate={onUpdateTask}
+                                    onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  </>);
+                  })()}
                 </div>
               )}
             </div>
