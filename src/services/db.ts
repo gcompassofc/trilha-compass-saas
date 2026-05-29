@@ -159,6 +159,18 @@ export const dbService = {
     }, (error) => handleError(error, "Listar Atrasadas"));
   },
 
+  // Concluídas a partir de uma semana de corte (usado pelos Relatórios para o
+  // histórico de até ~3 meses). Mesma estratégia de subscribeToIncompleteTasks:
+  // query simples por `completed` e filtro do corte no client (sem índice composto).
+  subscribeToCompletedSince: (sinceWeekId: string, callback: (tasks: WeeklyTask[]) => void) => {
+    const q = query(collection(db, TASKS_COLLECTION), where('completed', '==', true));
+    return onSnapshot(q, (snapshot) => {
+      const tasks = (snapshot.docs.map(d => ({ ...d.data(), id: d.id })) as WeeklyTask[])
+        .filter(t => t.weekId >= sinceWeekId);
+      callback(tasks);
+    }, (error) => handleError(error, "Listar Concluídas"));
+  },
+
   // Batch update for reordering — escreve apenas o campo order para evitar
   // sobrescrever mudanças concorrentes (toggle completed durante drag, etc).
   reorderTasks: async (tasks: WeeklyTask[]) => {

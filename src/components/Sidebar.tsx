@@ -1,7 +1,7 @@
-import { Users, Calendar, Settings, LogOut, Building2, DollarSign } from 'lucide-react';
+import { Users, Calendar, Settings, LogOut, Building2, DollarSign, BarChart3 } from 'lucide-react';
 import { motion } from 'motion/react';
 
-export type ActiveTab = 'planner' | 'clients' | 'team' | 'financial';
+export type ActiveTab = 'planner' | 'clients' | 'team' | 'financial' | 'reports';
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -12,6 +12,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const menuItems = [
     { id: 'planner', label: 'Planejador', icon: Calendar },
     { id: 'clients', label: 'Clientes', icon: Building2 },
+    { id: 'reports', label: 'Relatórios', icon: BarChart3 },
     { id: 'financial', label: 'Financeiro', icon: DollarSign },
     { id: 'team', label: 'Equipe', icon: Users },
   ];

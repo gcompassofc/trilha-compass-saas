@@ -10,6 +10,7 @@ import SprintPlanner from './views/SprintPlanner/SprintPlanner';
 import ClientManagement from './views/ClientManagement';
 import TeamManagement from './views/TeamManagement';
 import FinancialManagement from './views/FinancialManagement';
+import ReportsDashboard from './views/Reports/ReportsDashboard';
 import Login from './components/Login';
 import GlobalSearch from './components/GlobalSearch';
 import ToastContainer from './components/Toast';
@@ -36,6 +37,7 @@ export default function App() {
   const [gamification, setGamification] = useState<UserGamification[]>([]);
   const [sprintFocus, setSprintFocus] = useState<SprintFocus | null>(null);
   const [incompleteTasks, setIncompleteTasks] = useState<WeeklyTask[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<WeeklyTask[]>([]);
   const [dailyRituals, setDailyRituals] = useState<DailyRitual[]>([]);
   const [currentWeekId, setCurrentWeekId] = useState(getWeekId(new Date()));
   const [tasksLoaded, setTasksLoaded] = useState(false);
@@ -120,6 +122,19 @@ export default function App() {
     });
     return () => { unsubTasks(); unsubFocus(); };
   }, [user, currentWeekId]);
+
+  // Concluídas históricas — carregadas sob demanda só quando a aba Relatórios
+  // está ativa. Corte de 12 semanas atrás (cobre o maior preset, "3 meses").
+  useEffect(() => {
+    if (!user || activeTab !== 'reports') return;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 12 * 7);
+    const sinceWeekId = getWeekId(cutoff);
+    const unsub = dbService.subscribeToCompletedSince(sinceWeekId, (data) => {
+      setCompletedTasks(data);
+    });
+    return () => unsub();
+  }, [user, activeTab]);
 
   // Handler Functions
   const handleAddClient = async (client: Omit<Client, 'id'>) => {
@@ -297,6 +312,16 @@ export default function App() {
   };
 
   const handleUpdateTask = async (updated: WeeklyTask) => {
+    // 0. Stamp completedAt on the completion transition (funil central). Alimenta
+    //    o histórico dos Relatórios. Só mexe quando o estado de `completed` muda.
+    const prev = weeklyTasks.find(t => t.id === updated.id);
+    const wasCompleted = prev?.completed ?? false;
+    if (updated.completed && !wasCompleted) {
+      updated.completedAt = Date.now();
+    } else if (!updated.completed && wasCompleted) {
+      updated.completedAt = undefined;
+    }
+
     // 1. If date changed via Planner card directly, sync its weekId and day
     if (updated.dueDate) {
        const newWeekId = getWeekIdFromDateString(updated.dueDate);
@@ -496,12 +521,29 @@ export default function App() {
               transition={{ duration: 0.3 }}
               className="flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar pr-2 pb-8"
             >
-              <FinancialManagement 
+              <FinancialManagement
                 transactions={transactions}
                 clients={clients}
                 onAddTransaction={handleAddTransaction}
                 onUpdateTransaction={handleUpdateTransaction}
                 onDeleteTransaction={handleDeleteTransaction}
+              />
+            </motion.div>
+          )}
+          {activeTab === 'reports' && (
+            <motion.div
+              key="reports"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar pr-2 pb-8"
+            >
+              <ReportsDashboard
+                clients={clients}
+                teamMembers={teamMembers}
+                incompleteTasks={incompleteTasks}
+                completedTasks={completedTasks}
               />
             </motion.div>
           )}

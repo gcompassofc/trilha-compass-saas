@@ -89,6 +89,7 @@ export interface WeeklyTask {
   startDate?: string; // ISO YYYY-MM-DD. Se setado junto com dueDate, a tarefa ocupa todos os dias do intervalo no sprint.
   status?: TaskStatus; // 'in_progress' | 'blocked' | 'done'. Ausência = "não começou".
   blockedReason?: string; // motivo do impedimento (opcional, só faz sentido com status='blocked').
+  completedAt?: number; // timestamp ms da conclusão (gravado quando completed passa a true). Alimenta o histórico dos Relatórios.
 }
 
 export interface DailyRitual {

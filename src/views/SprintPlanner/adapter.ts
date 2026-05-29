@@ -38,14 +38,14 @@ function todayISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function inferKind(task: WeeklyTask): TaskKind {
+export function inferKind(task: WeeklyTask): TaskKind {
   if (task.kind) return task.kind;
   if (task.priority === 'high') return 'urgente';
   if (task.taskType === 'overdelivery') return 'recorrente';
   return 'pontual';
 }
 
-function uniqueResponsibles(t: WeeklyTask): string[] {
+export function uniqueResponsibles(t: WeeklyTask): string[] {
   const list: string[] = [];
   if (t.responsible) list.push(t.responsible);
   for (const r of t.responsibles || []) {
