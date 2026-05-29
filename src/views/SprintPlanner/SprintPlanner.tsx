@@ -1685,6 +1685,92 @@ export default function SprintPlanner({
     }
   }, [onUpdateTask, onUpdateGamification, myG, user.uid, prefs.confetti, prefs.sound, focusKW]);
 
+  // Renderiza uma lista de tarefas (agrupada por cliente ou flat, com drag-reorder).
+  // Extraída para ser reutilizada nas seções "Para hoje" e "Em andamento" de cada dia.
+  const renderTaskList = (tasks: SprintTaskView[], day: DayOfWeek) => (
+    grouped ? (
+      groupTasksByClient(tasks, clients).map(g => {
+        const groupKey = `${day}_${g.key}`;
+        const groupOpen = openClientGroups.has(groupKey);
+        return (
+          <div key={g.key} className="cgroup" data-open={groupOpen ? 'true' : 'false'}>
+            <header className="cgroup__head" onClick={() => toggleClientGroup(groupKey)}>
+              <span className="cgroup__dot" style={{ ['--cgroup-color' as any]: g.color } as React.CSSProperties} />
+              <span className="cgroup__name">{g.name}</span>
+              <span className="cgroup__count">{g.tasks.length}</span>
+              <ClientReorderArrows
+                clientKey={g.key}
+                clients={clients}
+                onReorderClients={onReorderClients}
+              />
+              <span className="cgroup__time">{fmtMinutes(g.tasks.reduce((a, t) => a + t.estimatedMinutes, 0))}</span>
+              <span className="cgroup__chev"><Icon.ChevDown size={14} /></span>
+            </header>
+            {groupOpen && (
+              <Reorder.Group
+                axis="y"
+                values={g.tasks.map(t => t.raw)}
+                onReorder={(newTasks) => handleReorderInGroup(day, tasks, g.key, newTasks)}
+                as="div"
+              >
+                {g.tasks.map(task => {
+                  const expanded = expandedTaskId === task.id;
+                  return (
+                    <DraggableTaskItem key={task.id} task={task}>
+                      {(controls) => (
+                        <>
+                          <TaskRow task={task} clients={clients} team={teamMembers}
+                            onToggle={handleToggleTask} ungrouped={false}
+                            onExpand={() => toggleExpand(task.id)} expanded={expanded}
+                            dragControls={controls} />
+                          {expanded && (
+                            <TaskDetail task={task} team={teamMembers} clients={clients}
+                              currentUserName={accountName}
+                              onUpdate={onUpdateTask}
+                              onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
+                          )}
+                        </>
+                      )}
+                    </DraggableTaskItem>
+                  );
+                })}
+              </Reorder.Group>
+            )}
+          </div>
+        );
+      })
+    ) : (
+      <Reorder.Group
+        axis="y"
+        values={tasks.map(t => t.raw)}
+        onReorder={(newTasks) => onReorderTasks(day, newTasks)}
+        as="div"
+      >
+        {tasks.map(task => {
+          const expanded = expandedTaskId === task.id;
+          return (
+            <DraggableTaskItem key={task.id} task={task}>
+              {(controls) => (
+                <>
+                  <TaskRow task={task} clients={clients} team={teamMembers}
+                    onToggle={handleToggleTask} ungrouped={true}
+                    onExpand={() => toggleExpand(task.id)} expanded={expanded}
+                    dragControls={controls} />
+                  {expanded && (
+                    <TaskDetail task={task} team={teamMembers} clients={clients}
+                      currentUserName={accountName}
+                      onUpdate={onUpdateTask}
+                      onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
+                  )}
+                </>
+              )}
+            </DraggableTaskItem>
+          );
+        })}
+      </Reorder.Group>
+    )
+  );
+
   // Filters active?
   const filtersActive = clientFilter !== '__all' || personFilter !== '__all';
   const clearFilters = () => { setClientFilter('__all'); setPersonFilter('__all'); };
@@ -2215,6 +2301,9 @@ export default function SprintPlanner({
                   const pendingTasks = d.tasks.filter(t => !t.completed);
                   const doneTasks = d.tasks.filter(t => t.completed);
                   const doneOpen = openDoneDays.has(d.day);
+                  // Separa o que finaliza no dia (totalDays <= 1) do que se estende por vários dias.
+                  const todayTasks = pendingTasks.filter(t => (t.totalDays ?? 0) <= 1);
+                  const multiTasks = pendingTasks.filter(t => (t.totalDays ?? 0) > 1);
                   return (<>
                   {pendingTasks.length === 0 ? (
                     d.rituals.length === 0 && doneTasks.length === 0 ? (
@@ -2226,86 +2315,29 @@ export default function SprintPlanner({
                         Tudo concluído por aqui 🎉
                       </div>
                     ) : null
-                  ) : grouped ? (
-                    groupTasksByClient(pendingTasks, clients).map(g => {
-                      const groupKey = `${d.day}_${g.key}`;
-                      const groupOpen = openClientGroups.has(groupKey);
-                      return (
-                        <div key={g.key} className="cgroup" data-open={groupOpen ? 'true' : 'false'}>
-                          <header className="cgroup__head" onClick={() => toggleClientGroup(groupKey)}>
-                            <span className="cgroup__dot" style={{ ['--cgroup-color' as any]: g.color } as React.CSSProperties} />
-                            <span className="cgroup__name">{g.name}</span>
-                            <span className="cgroup__count">{g.tasks.length}</span>
-                            <ClientReorderArrows
-                              clientKey={g.key}
-                              clients={clients}
-                              onReorderClients={onReorderClients}
-                            />
-                            <span className="cgroup__time">{fmtMinutes(g.tasks.reduce((a, t) => a + t.estimatedMinutes, 0))}</span>
-                            <span className="cgroup__chev"><Icon.ChevDown size={14} /></span>
-                          </header>
-                          {groupOpen && (
-                            <Reorder.Group
-                              axis="y"
-                              values={g.tasks.map(t => t.raw)}
-                              onReorder={(newTasks) => handleReorderInGroup(d.day, pendingTasks, g.key, newTasks)}
-                              as="div"
-                            >
-                              {g.tasks.map(task => {
-                                const expanded = expandedTaskId === task.id;
-                                return (
-                                  <DraggableTaskItem key={task.id} task={task}>
-                                    {(controls) => (
-                                      <>
-                                        <TaskRow task={task} clients={clients} team={teamMembers}
-                                          onToggle={handleToggleTask} ungrouped={false}
-                                          onExpand={() => toggleExpand(task.id)} expanded={expanded}
-                                          dragControls={controls} />
-                                        {expanded && (
-                                          <TaskDetail task={task} team={teamMembers} clients={clients}
-                                            currentUserName={accountName}
-                                            onUpdate={onUpdateTask}
-                                            onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
-                                        )}
-                                      </>
-                                    )}
-                                  </DraggableTaskItem>
-                                );
-                              })}
-                            </Reorder.Group>
-                          )}
-                        </div>
-                      );
-                    })
                   ) : (
-                    <Reorder.Group
-                      axis="y"
-                      values={pendingTasks.map(t => t.raw)}
-                      onReorder={(newTasks) => onReorderTasks(d.day, newTasks)}
-                      as="div"
-                    >
-                      {pendingTasks.map(task => {
-                        const expanded = expandedTaskId === task.id;
-                        return (
-                          <DraggableTaskItem key={task.id} task={task}>
-                            {(controls) => (
-                              <>
-                                <TaskRow task={task} clients={clients} team={teamMembers}
-                                  onToggle={handleToggleTask} ungrouped={true}
-                                  onExpand={() => toggleExpand(task.id)} expanded={expanded}
-                                  dragControls={controls} />
-                                {expanded && (
-                                  <TaskDetail task={task} team={teamMembers} clients={clients}
-                                    currentUserName={accountName}
-                                    onUpdate={onUpdateTask}
-                                    onDelete={() => { setExpandedTaskId(null); onDeleteTask(task.id); }} />
-                                )}
-                              </>
-                            )}
-                          </DraggableTaskItem>
-                        );
-                      })}
-                    </Reorder.Group>
+                    <>
+                      {todayTasks.length > 0 && (
+                        <div className="day-section">
+                          <div className="day-section__head day-section__head--today">
+                            <Icon.Clock size={13} />
+                            <span>Para hoje</span>
+                            <span className="day-section__count">{todayTasks.length}</span>
+                          </div>
+                          {renderTaskList(todayTasks, d.day)}
+                        </div>
+                      )}
+                      {multiTasks.length > 0 && (
+                        <div className="day-section">
+                          <div className="day-section__head day-section__head--multi">
+                            <Icon.Calendar size={13} />
+                            <span>Em andamento</span>
+                            <span className="day-section__count">{multiTasks.length}</span>
+                          </div>
+                          {renderTaskList(multiTasks, d.day)}
+                        </div>
+                      )}
+                    </>
                   )}
                   {doneTasks.length > 0 && (
                     <div className="done-group" data-open={doneOpen ? 'true' : 'false'}>
