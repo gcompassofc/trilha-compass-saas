@@ -1,10 +1,4 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build:deploy",
-  "outputDirectory": "dist-deploy",
-  "rewrites": [
-    { "source": "/financeiro", "destination": "/financeiro/index.html" },
-    { "source": "/financeiro/((?!assets/|.*\\.[a-zA-Z0-9]+$).*)", "destination": "/financeiro/index.html" }
-  ],
-  "cleanUrls": true
+  "outputDirectory": "dist-deploy"
 }
