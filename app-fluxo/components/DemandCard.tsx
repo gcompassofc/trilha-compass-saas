@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { category, dueBadge } from '../lib';
 import type { Demand } from '../types';
 import Avatar from './Avatar';
@@ -9,6 +10,8 @@ interface Props {
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
   dragging?: boolean;
+  selectMode?: boolean; // quando true, clique marca/desmarca em vez de abrir
+  selected?: boolean;
 }
 
 /** Cartão de demanda do Quadro (borda-esquerda na cor da categoria). */
@@ -19,6 +22,8 @@ export default function DemandCard({
   onDragStart,
   onDragEnd,
   dragging,
+  selectMode,
+  selected,
 }: Props) {
   const cat = category(demand.categoria);
   const badge = dueBadge(demand);
@@ -27,17 +32,28 @@ export default function DemandCard({
   return (
     <div
       onClick={onClick}
-      draggable={draggable}
+      draggable={draggable && !selectMode}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={[
         'group relative rounded-2xl bg-white px-[15px] py-[14px] card-shadow',
         'transition-shadow hover:card-shadow-hover',
-        draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
+        selectMode ? 'cursor-pointer' : draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
+        selected ? 'ring-2 ring-accent' : '',
         dragging ? 'dragging' : '',
       ].join(' ')}
       style={{ borderLeft: `4px solid ${cat.colorVar}` }}
     >
+      {selectMode && (
+        <span
+          className={[
+            'absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full border-2 transition',
+            selected ? 'border-transparent bg-accent text-white' : 'border-black/20 bg-white text-transparent',
+          ].join(' ')}
+        >
+          <Check className="h-3 w-3" strokeWidth={3} />
+        </span>
+      )}
       {/* linha topo: categoria + prioridade alta */}
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-soft">

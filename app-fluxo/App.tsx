@@ -227,6 +227,7 @@ export default function App() {
                   onCardClick={openEdit}
                   onMove={(id, status) => patchDemand(id, { status })}
                   onQuickAdd={quickAdd}
+                  onDeleteMany={(ids) => fluxoDb.deleteManyDemands(ids)}
                 />
               )}
               {screen === 'mural' && (

@@ -7,6 +7,7 @@ import {
   deleteDoc,
   onSnapshot,
   deleteField,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Client, Demand, Idea, MuralNote, Person, PersonId } from './types';
@@ -76,6 +77,19 @@ export const fluxoDb = {
       await deleteDoc(doc(db, C.demandas, id));
     } catch (e) {
       logErr('deleteDemand', e);
+    }
+  },
+  async deleteManyDemands(ids: string[]) {
+    if (ids.length === 0) return;
+    try {
+      // writeBatch: apaga tudo numa operação (limite de 500 por batch).
+      for (let i = 0; i < ids.length; i += 500) {
+        const batch = writeBatch(db);
+        ids.slice(i, i + 500).forEach((id) => batch.delete(doc(db, C.demandas, id)));
+        await batch.commit();
+      }
+    } catch (e) {
+      logErr('deleteManyDemands', e);
     }
   },
 
