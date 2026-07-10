@@ -1,5 +1,8 @@
 node_modules
 dist
+dist-fluxo
+dist-deploy
+referencia
 .env
 .env.local
 .env.*.local

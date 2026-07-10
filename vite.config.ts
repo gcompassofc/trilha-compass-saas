@@ -6,6 +6,9 @@ import {defineConfig, loadEnv} from 'vite';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
+    // Base opcional: no build combinado (Fluxo em / + Finanças em /financeiro/),
+    // o app antigo é buildado com VITE_BASE=/financeiro/. Sem a env, base padrão '/'.
+    base: env.VITE_BASE || '/',
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),

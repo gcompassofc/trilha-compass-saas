@@ -8,7 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "dev:fluxo": "vite --config vite.fluxo.config.ts",
+    "build:fluxo": "vite build --config vite.fluxo.config.ts",
+    "preview:fluxo": "vite preview --config vite.fluxo.config.ts",
+    "build:financeiro": "vite build --base=/financeiro/",
+    "build:deploy": "npm run build:fluxo && npm run build:financeiro && node scripts/build-combined.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

@@ -1,0 +1,79 @@
+@import 'tailwindcss';
+
+/* ── Fluxo · design tokens ───────────────────────────────────────────────
+   Extraídos do HTML de referência (referencia/app-novo-original.html).
+   Accent oklch(0.55 0.2 264) ≈ #4f5bf0; fundo off-white quente #f1efe9. */
+@theme {
+  --font-sans: 'Onest', system-ui, -apple-system, sans-serif;
+  --font-hand: 'Caveat', 'Onest', cursive;
+
+  --color-canvas: oklch(0.94 0.008 85); /* #f1efe9 */
+  --color-ink: oklch(0.24 0.01 285); /* #1d1c22 quase-preto */
+  --color-ink-soft: oklch(0.5 0.01 285);
+  --color-ink-faint: oklch(0.65 0.008 285);
+
+  --color-accent: oklch(0.55 0.2 264);
+  --color-accent-strong: oklch(0.5 0.2 264);
+  --color-accent-soft: oklch(0.55 0.2 264 / 0.1);
+
+  /* categorias */
+  --color-cat-social: oklch(0.6 0.16 300);
+  --color-cat-trafego: oklch(0.58 0.17 260);
+  --color-cat-design: oklch(0.64 0.16 356);
+  --color-cat-video: oklch(0.55 0.16 288);
+  --color-cat-site: oklch(0.62 0.12 200);
+  --color-cat-estrategia: oklch(0.7 0.13 66);
+
+  /* pessoas */
+  --color-p-allyson: oklch(0.55 0.16 288); /* roxo */
+  --color-p-kallyl: oklch(0.56 0.17 262); /* azul */
+
+  --color-danger: oklch(0.58 0.19 25);
+  --color-done: oklch(0.68 0.15 150);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* sombra padrão dos cartões (rgba(40,38,60,.4) 0 8px 20px -14px na referência) */
+@utility card-shadow {
+  box-shadow: 0 8px 20px -14px rgba(40, 38, 60, 0.45);
+}
+@utility card-shadow-hover {
+  box-shadow: 0 14px 30px -16px rgba(40, 38, 60, 0.5);
+}
+
+/* grid pontilhado do Mural */
+.mural-grid {
+  background-image: radial-gradient(oklch(0.24 0.01 285 / 0.07) 1.4px, transparent 1.4px);
+  background-size: 26px 26px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+/* item sendo arrastado */
+.dragging {
+  opacity: 0.4;
+}
+.drop-active {
+  outline: 2px dashed var(--color-accent);
+  outline-offset: -4px;
+  background: var(--color-accent-soft);
+}

@@ -1,0 +1,20 @@
+rules_version = '2';
+
+// Regras do Firestore do projeto trilha-compass.
+// Cobrem os DOIS apps (antigo: clients/weeklyTasks/etc.; novo Fluxo:
+// demandas/mural_notas/ideias/fluxo_clientes/fluxo_pessoas).
+//
+// Decisão (2026-07-10): ferramenta interna com login restrito à equipe →
+// qualquer usuário autenticado lê e escreve. Não restringe por coleção para
+// não quebrar o app antigo (Finanças), que já funcionava só exigindo login.
+//
+// ATENÇÃO: publicar isto SOBRESCREVE as regras atuais do projeto. Como esta
+// regra é permissiva (auth != null), não deve quebrar o app antigo. Se o app
+// antigo tiver regras mais específicas hoje, confira antes de aplicar.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

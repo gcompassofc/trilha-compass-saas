@@ -1,0 +1,84 @@
+import { category, dueBadge } from '../lib';
+import type { Demand } from '../types';
+import Avatar from './Avatar';
+
+interface Props {
+  demand: Demand;
+  onClick?: () => void;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+  dragging?: boolean;
+}
+
+/** Cartão de demanda do Quadro (borda-esquerda na cor da categoria). */
+export default function DemandCard({
+  demand,
+  onClick,
+  draggable,
+  onDragStart,
+  onDragEnd,
+  dragging,
+}: Props) {
+  const cat = category(demand.categoria);
+  const badge = dueBadge(demand);
+  const isDone = demand.concluida;
+
+  return (
+    <div
+      onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className={[
+        'group relative rounded-2xl bg-white px-[15px] py-[14px] card-shadow',
+        'transition-shadow hover:card-shadow-hover',
+        draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
+        dragging ? 'dragging' : '',
+      ].join(' ')}
+      style={{ borderLeft: `4px solid ${cat.colorVar}` }}
+    >
+      {/* linha topo: categoria + prioridade alta */}
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-soft">
+          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: cat.colorVar }} />
+          {cat.label}
+        </span>
+        {demand.prioridade === 'alta' && !isDone && (
+          <span
+            title="Prioridade alta"
+            className="h-2 w-2 rounded-full"
+            style={{ background: 'var(--color-danger)' }}
+          />
+        )}
+      </div>
+
+      <h4
+        className={[
+          'mt-2 text-[15px] leading-snug font-bold',
+          isDone ? 'text-ink-faint line-through' : 'text-ink',
+        ].join(' ')}
+      >
+        {demand.titulo}
+      </h4>
+      <p className="mt-0.5 text-[13px] text-ink-faint">{demand.cliente}</p>
+
+      <div className="mt-3 flex items-center justify-between">
+        {demand.owner ? <Avatar id={demand.owner} size={26} /> : <span />}
+        {badge && (
+          <span
+            className={[
+              'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+              badge.kind === 'today' ? 'bg-accent text-white' : '',
+              badge.kind === 'late' ? 'text-white' : '',
+              badge.kind === 'plain' ? 'text-ink-faint' : '',
+            ].join(' ')}
+            style={badge.kind === 'late' ? { background: 'var(--color-danger)' } : undefined}
+          >
+            {badge.label}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
