@@ -326,6 +326,10 @@ export default function App() {
             setModalOpen(false);
           }}
           onCreateClient={addClient}
+          onDelete={(id) => {
+            fluxoDb.deleteDemand(id);
+            setModalOpen(false);
+          }}
         />
       </div>
     </StoreProvider>

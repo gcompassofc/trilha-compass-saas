@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import { CATEGORIES, PEOPLE, STATUS_COLUMNS } from '../data';
 import { uid } from '../lib';
 import type { CategoryId, Client, Demand, PersonId, Priority, StatusId } from '../types';
@@ -13,6 +13,7 @@ interface Props {
   onClose: () => void;
   onSave: (d: Demand) => void;
   onCreateClient: (nome: string) => void; // cadastra cliente novo criado aqui
+  onDelete: (id: string) => void; // apaga a demanda (só em edição)
 }
 
 const PRIORITIES: { id: Priority; label: string }[] = [
@@ -33,16 +34,18 @@ const empty: Demand = {
 };
 
 /** Modal de criar/editar demanda. */
-export default function DemandModal({ open, demand, clients, onClose, onSave, onCreateClient }: Props) {
+export default function DemandModal({ open, demand, clients, onClose, onSave, onCreateClient, onDelete }: Props) {
   const [form, setForm] = useState<Demand>(empty);
   const [addingClient, setAddingClient] = useState(false);
   const [newClient, setNewClient] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(demand ?? { ...empty, id: uid('d') });
       setAddingClient(false);
       setNewClient('');
+      setConfirmDelete(false);
     }
   }, [open, demand]);
 
@@ -209,17 +212,51 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-full px-4 py-2.5 text-[14px] font-semibold text-ink-soft hover:bg-black/5">
-            Cancelar
-          </button>
-          <button
-            onClick={save}
-            disabled={!form.titulo.trim()}
-            className="rounded-full bg-accent px-5 py-2.5 text-[14px] font-semibold text-white transition hover:bg-accent-strong disabled:opacity-40"
-          >
-            {demand ? 'Salvar' : 'Criar demanda'}
-          </button>
+        <div className="mt-6 flex items-center justify-between gap-2">
+          {/* apagar — só em edição */}
+          <div>
+            {demand &&
+              (confirmDelete ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] text-ink-soft">Apagar?</span>
+                  <button
+                    onClick={() => onDelete(demand.id)}
+                    className="rounded-full px-3 py-2 text-[13px] font-semibold text-white"
+                    style={{ background: 'var(--color-danger)' }}
+                  >
+                    Sim, apagar
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="rounded-full px-2 py-2 text-[13px] text-ink-soft hover:bg-black/5"
+                  >
+                    Não
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  title="Apagar demanda"
+                  className="flex items-center gap-1.5 rounded-full px-3 py-2.5 text-[13px] font-semibold text-danger hover:bg-danger/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Excluir
+                </button>
+              ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} className="rounded-full px-4 py-2.5 text-[14px] font-semibold text-ink-soft hover:bg-black/5">
+              Cancelar
+            </button>
+            <button
+              onClick={save}
+              disabled={!form.titulo.trim()}
+              className="rounded-full bg-accent px-5 py-2.5 text-[14px] font-semibold text-white transition hover:bg-accent-strong disabled:opacity-40"
+            >
+              {demand ? 'Salvar' : 'Criar demanda'}
+            </button>
+          </div>
         </div>
       </div>
 
