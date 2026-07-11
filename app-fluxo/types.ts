@@ -46,6 +46,7 @@ export interface Demand {
   prioridade: Priority;
   prazo: string | null; // ISO yyyy-mm-dd
   concluida?: boolean; // usado no checkbox da tela Dupla
+  descricao?: string; // briefing em markdown (texto, links, imagens por URL)
 }
 
 export interface MuralNote {

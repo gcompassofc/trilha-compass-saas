@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { Check, AlignLeft } from 'lucide-react';
 import { category, dueBadge } from '../lib';
 import type { Demand } from '../types';
 import Avatar from './Avatar';
@@ -77,7 +77,12 @@ export default function DemandCard({
       >
         {demand.titulo}
       </h4>
-      <p className="mt-0.5 text-[13px] text-ink-faint">{demand.cliente}</p>
+      <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink-faint">
+        {demand.cliente}
+        {demand.descricao?.trim() && (
+          <AlignLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-label="Tem descrição" />
+        )}
+      </p>
 
       <div className="mt-3 flex items-center justify-between">
         {demand.owner ? <Avatar id={demand.owner} size={26} /> : <span />}

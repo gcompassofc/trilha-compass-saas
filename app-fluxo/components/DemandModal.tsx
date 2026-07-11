@@ -5,6 +5,7 @@ import { uid } from '../lib';
 import type { CategoryId, Client, Demand, PersonId, Priority, StatusId } from '../types';
 import Avatar from './Avatar';
 import ClientAvatar from './ClientAvatar';
+import DescriptionEditor from './DescriptionEditor';
 
 interface Props {
   open: boolean;
@@ -31,6 +32,7 @@ const empty: Demand = {
   categoria: 'social',
   prioridade: 'media',
   prazo: null,
+  descricao: '',
 };
 
 /** Modal de criar/editar demanda. */
@@ -65,7 +67,8 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
   }
   function save() {
     if (!form.titulo.trim()) return;
-    onSave({ ...form, cliente: form.cliente.trim() || 'Interno' });
+    const descricao = form.descricao?.trim() ? form.descricao : undefined;
+    onSave({ ...form, cliente: form.cliente.trim() || 'Interno', descricao });
   }
 
   return (
@@ -90,6 +93,10 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
               placeholder="Ex.: Carrossel de lançamento"
               className="input"
             />
+          </Field>
+
+          <Field label="Descrição">
+            <DescriptionEditor value={form.descricao ?? ''} onChange={(v) => set('descricao', v)} />
           </Field>
 
           <Field label="Cliente">
