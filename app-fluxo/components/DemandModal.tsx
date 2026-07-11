@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, ChevronDown } from 'lucide-react';
 import { CATEGORIES, PEOPLE, STATUS_COLUMNS } from '../data';
 import { uid } from '../lib';
 import type { CategoryId, Client, Demand, PersonId, Priority, StatusId } from '../types';
@@ -41,13 +41,20 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
   const [addingClient, setAddingClient] = useState(false);
   const [newClient, setNewClient] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // seções recolhíveis (começam fechadas p/ deixar o modal enxuto)
+  const [showDesc, setShowDesc] = useState(false);
+  const [showCat, setShowCat] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setForm(demand ?? { ...empty, id: uid('d') });
+      const base = demand ?? { ...empty, id: uid('d') };
+      setForm(base);
       setAddingClient(false);
       setNewClient('');
       setConfirmDelete(false);
+      // abre a Descrição já se a demanda editada tiver conteúdo
+      setShowDesc(!!base.descricao?.trim());
+      setShowCat(false);
     }
   }, [open, demand]);
 
@@ -75,16 +82,18 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[520px] rounded-t-3xl bg-canvas p-5 shadow-2xl sm:rounded-3xl sm:p-6"
+        className="flex max-h-[90vh] w-full max-w-[520px] flex-col rounded-t-3xl bg-canvas shadow-2xl sm:max-h-[88vh] sm:rounded-3xl"
       >
-        <div className="mb-5 flex items-center justify-between">
+        {/* header fixo */}
+        <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-4 sm:px-6">
           <h3 className="text-[19px] font-bold text-ink">{demand ? 'Editar demanda' : 'Nova demanda'}</h3>
           <button onClick={onClose} className="text-ink-faint hover:text-ink">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="space-y-4">
+        {/* corpo rolável */}
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
           <Field label="Título">
             <input
               autoFocus
@@ -95,9 +104,9 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
             />
           </Field>
 
-          <Field label="Descrição">
+          <Collapsible label="Descrição" open={showDesc} onToggle={() => setShowDesc((v) => !v)} hint={form.descricao?.trim() ? '✓' : ''}>
             <DescriptionEditor value={form.descricao ?? ''} onChange={(v) => set('descricao', v)} />
-          </Field>
+          </Collapsible>
 
           <Field label="Cliente">
             {addingClient ? (
@@ -170,7 +179,12 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
             </div>
           </Field>
 
-          <Field label="Categoria">
+          <Collapsible
+            label="Categoria"
+            open={showCat}
+            onToggle={() => setShowCat((v) => !v)}
+            hint={CATEGORIES.find((c) => c.id === form.categoria)?.label ?? ''}
+          >
             <div className="flex flex-wrap gap-2">
               {CATEGORIES.map((c) => (
                 <button
@@ -186,7 +200,7 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
                 </button>
               ))}
             </div>
-          </Field>
+          </Collapsible>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Prioridade">
@@ -219,7 +233,8 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-between gap-2">
+        {/* footer fixo */}
+        <div className="flex items-center justify-between gap-2 border-t border-black/[0.06] px-5 py-4 sm:px-6">
           {/* apagar — só em edição */}
           <div>
             {demand &&
@@ -290,6 +305,42 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-1.5 block text-[12px] font-semibold text-ink-soft">{label}</span>
       {children}
     </label>
+  );
+}
+
+/** Seção recolhível (toggle). Mostra um resumo (hint) quando fechada. */
+function Collapsible({
+  label,
+  hint,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-black/[0.06] bg-black/[0.015]">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+      >
+        <span className="flex items-center gap-2 text-[12px] font-semibold text-ink-soft">
+          {label}
+          {!open && hint && (
+            <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-ink-soft">
+              {hint}
+            </span>
+          )}
+        </span>
+        <ChevronDown className={['h-4 w-4 text-ink-faint transition-transform', open ? 'rotate-180' : ''].join(' ')} />
+      </button>
+      {open && <div className="px-3 pb-3">{children}</div>}
+    </div>
   );
 }
 
