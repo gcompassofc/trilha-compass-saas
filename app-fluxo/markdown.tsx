@@ -36,7 +36,7 @@ function renderInline(text: string): React.ReactNode[] {
             key={k()}
             src={url}
             alt={m[2] || ''}
-            className="my-2 max-h-80 max-w-full rounded-lg border border-black/[0.06]"
+            className="my-2 max-h-80 max-w-full rounded-lg border border-white/10"
             loading="lazy"
           />,
         );
@@ -48,7 +48,7 @@ function renderInline(text: string): React.ReactNode[] {
       const url = safeUrl(m[6]);
       if (url) {
         out.push(
-          <a key={k()} href={url} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2 hover:opacity-80">
+          <a key={k()} href={url} target="_blank" rel="noopener noreferrer" className="text-accent-text underline underline-offset-2 hover:opacity-80">
             {m[5]}
           </a>,
         );
@@ -61,7 +61,7 @@ function renderInline(text: string): React.ReactNode[] {
       out.push(<em key={k()}>{m[10]}</em>);
     } else if (m[11]) {
       out.push(
-        <code key={k()} className="rounded bg-black/[0.06] px-1 py-0.5 font-mono text-[0.9em]">
+        <code key={k()} className="rounded bg-white/10 px-1 py-0.5 font-mono text-[0.9em]">
           {m[12]}
         </code>,
       );
@@ -70,7 +70,7 @@ function renderInline(text: string): React.ReactNode[] {
       const url = safeUrl(m[13]);
       if (url) {
         out.push(
-          <a key={k()} href={url} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2 hover:opacity-80 break-all">
+          <a key={k()} href={url} target="_blank" rel="noopener noreferrer" className="text-accent-text underline underline-offset-2 hover:opacity-80 break-all">
             {m[13]}
           </a>,
         );

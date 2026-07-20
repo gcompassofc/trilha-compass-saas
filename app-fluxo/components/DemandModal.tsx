@@ -79,15 +79,15 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-[520px] flex-col rounded-t-3xl bg-canvas shadow-2xl sm:max-h-[88vh] sm:rounded-3xl"
+        className="flex max-h-[90vh] w-full max-w-[520px] flex-col rounded-t-3xl bg-surface glass shadow-2xl ring-1 ring-hairline sm:max-h-[88vh] sm:rounded-3xl"
       >
         {/* header fixo */}
-        <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-4 sm:px-6">
+        <div className="flex items-center justify-between border-b border-hairline-soft px-5 py-4 sm:px-6">
           <h3 className="text-[19px] font-bold text-ink">{demand ? 'Editar demanda' : 'Nova demanda'}</h3>
-          <button onClick={onClose} className="text-ink-faint hover:text-ink">
+          <button onClick={onClose} className="text-ink-soft transition hover:text-ink">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -125,7 +125,7 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
                 <button onClick={confirmNewClient} className="rounded-full bg-accent px-3 py-2 text-[13px] font-semibold text-white hover:bg-accent-strong">
                   Adicionar
                 </button>
-                <button onClick={() => setAddingClient(false)} className="rounded-full px-2 py-2 text-[13px] text-ink-soft hover:bg-black/5">
+                <button onClick={() => setAddingClient(false)} className="rounded-full px-2 py-2 text-[13px] text-ink-soft hover:bg-white/8">
                   Cancelar
                 </button>
               </div>
@@ -138,8 +138,8 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
                     className={[
                       'flex items-center gap-1.5 rounded-full border py-1 pr-3 pl-1 text-[13px] font-semibold transition',
                       form.cliente === c.nome
-                        ? 'border-transparent bg-ink text-white'
-                        : 'border-black/[0.08] bg-white/60 text-ink-soft hover:bg-white',
+                        ? 'border-transparent bg-accent text-white'
+                        : 'border-white/10 bg-white/5 text-ink-2 hover:bg-white/10',
                     ].join(' ')}
                   >
                     <ClientAvatar nome={c.nome} size={22} />
@@ -148,7 +148,7 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
                 ))}
                 <button
                   onClick={() => setAddingClient(true)}
-                  className="flex items-center gap-1 rounded-full border border-dashed border-black/20 px-3 py-1.5 text-[13px] font-semibold text-ink-soft hover:border-accent/50 hover:text-accent"
+                  className="flex items-center gap-1 rounded-full border border-dashed border-white/15 px-3 py-1.5 text-[13px] font-semibold text-ink-soft hover:border-accent/50 hover:text-accent-text"
                 >
                   <Plus className="h-3.5 w-3.5" /> Novo cliente
                 </button>
@@ -168,8 +168,8 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
                   key={p.id}
                   onClick={() => set('owner', p.id as PersonId)}
                   className={[
-                    'flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-[13px] font-semibold transition',
-                    form.owner === p.id ? 'bg-white shadow-sm ring-1 ring-accent/40' : 'hover:bg-white/60',
+                    'flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-[13px] font-semibold text-ink-2 transition',
+                    form.owner === p.id ? 'bg-white/10 ring-1 ring-accent/40' : 'hover:bg-white/6',
                   ].join(' ')}
                 >
                   <Avatar id={p.id} size={26} />
@@ -192,7 +192,7 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
                   onClick={() => set('categoria', c.id as CategoryId)}
                   className={[
                     'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition',
-                    form.categoria === c.id ? 'border-transparent bg-ink text-white' : 'border-black/[0.08] bg-white/60 text-ink-soft hover:bg-white',
+                    form.categoria === c.id ? 'border-transparent bg-accent text-white' : 'border-white/10 bg-white/5 text-ink-2 hover:bg-white/10',
                   ].join(' ')}
                 >
                   <span className="h-1.5 w-1.5 rounded-full" style={{ background: c.colorVar }} />
@@ -211,7 +211,7 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
                     onClick={() => set('prioridade', p.id)}
                     className={[
                       'flex-1 rounded-lg border py-2 text-[13px] font-semibold transition',
-                      form.prioridade === p.id ? 'border-transparent bg-ink text-white' : 'border-black/[0.08] bg-white/60 text-ink-soft hover:bg-white',
+                      form.prioridade === p.id ? 'border-transparent bg-accent text-white' : 'border-white/10 bg-white/5 text-ink-2 hover:bg-white/10',
                     ].join(' ')}
                   >
                     {p.label}
@@ -234,7 +234,7 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
         </div>
 
         {/* footer fixo */}
-        <div className="flex items-center justify-between gap-2 border-t border-black/[0.06] px-5 py-4 sm:px-6">
+        <div className="flex items-center justify-between gap-2 border-t border-hairline-soft px-5 py-4 sm:px-6">
           {/* apagar — só em edição */}
           <div>
             {demand &&
@@ -250,7 +250,7 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
                   </button>
                   <button
                     onClick={() => setConfirmDelete(false)}
-                    className="rounded-full px-2 py-2 text-[13px] text-ink-soft hover:bg-black/5"
+                    className="rounded-full px-2 py-2 text-[13px] text-ink-soft hover:bg-white/8"
                   >
                     Não
                   </button>
@@ -268,7 +268,7 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="rounded-full px-4 py-2.5 text-[14px] font-semibold text-ink-soft hover:bg-black/5">
+            <button onClick={onClose} className="rounded-full px-4 py-2.5 text-[14px] font-semibold text-ink-soft transition hover:bg-white/8 hover:text-ink">
               Cancelar
             </button>
             <button
@@ -286,14 +286,16 @@ export default function DemandModal({ open, demand, clients, onClose, onSave, on
         .input {
           width: 100%;
           border-radius: 12px;
-          border: 1px solid rgba(0,0,0,.08);
-          background: rgba(255,255,255,.7);
+          border: 1px solid rgba(255,255,255,.1);
+          background: rgba(255,255,255,.05);
           padding: 10px 12px;
           font-size: 14px;
           color: var(--color-ink);
           outline: none;
         }
-        .input:focus { border-color: color-mix(in oklch, var(--color-accent) 45%, transparent); background: #fff; }
+        .input:focus { border-color: color-mix(in oklch, var(--color-accent) 55%, transparent); background: rgba(255,255,255,.08); }
+        .input option { background: #181d27; color: var(--color-ink); }
+        .input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.6); cursor: pointer; }
       `}</style>
     </div>
   );
@@ -323,7 +325,7 @@ function Collapsible({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-black/[0.06] bg-black/[0.015]">
+    <div className="rounded-xl border border-hairline-soft bg-white/3">
       <button
         type="button"
         onClick={onToggle}
@@ -332,7 +334,7 @@ function Collapsible({
         <span className="flex items-center gap-2 text-[12px] font-semibold text-ink-soft">
           {label}
           {!open && hint && (
-            <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-ink-soft">
+            <span className="rounded-full bg-white/8 px-2 py-0.5 text-[11px] font-medium text-ink-2">
               {hint}
             </span>
           )}
@@ -350,7 +352,7 @@ function PersonChip({ active, onClick, children }: { active: boolean; onClick: (
       onClick={onClick}
       className={[
         'rounded-full border px-3 py-1.5 text-[13px] font-semibold transition',
-        active ? 'border-transparent bg-ink text-white' : 'border-black/[0.08] bg-white/60 text-ink-soft hover:bg-white',
+        active ? 'border-transparent bg-accent text-white' : 'border-white/10 bg-white/5 text-ink-2 hover:bg-white/10',
       ].join(' ')}
     >
       {children}

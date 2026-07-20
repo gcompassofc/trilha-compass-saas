@@ -47,17 +47,17 @@ export default function ManageDrawer({
       <div
         onClick={onClose}
         className={[
-          'fixed inset-0 z-40 bg-black/25 transition-opacity',
+          'fixed inset-0 z-40 bg-black/60 transition-opacity',
           open ? 'opacity-100' : 'pointer-events-none opacity-0',
         ].join(' ')}
       />
       <aside
         className={[
-          'fixed top-0 right-0 z-50 flex h-full w-full max-w-[400px] flex-col bg-canvas shadow-2xl transition-transform',
+          'fixed top-0 right-0 z-50 flex h-full w-full max-w-[400px] flex-col bg-surface glass-30 shadow-2xl transition-transform',
           open ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
       >
-        <div className="flex items-start justify-between border-b border-black/[0.06] px-5 py-4">
+        <div className="flex items-start justify-between border-b border-hairline-soft px-5 py-4">
           <div>
             <h3 className="text-[18px] font-bold text-ink">Gerenciar</h3>
             <p className="text-[12px] text-ink-faint">Fotos da dupla e cadastro de clientes.</p>
@@ -73,7 +73,7 @@ export default function ManageDrawer({
             <h4 className="mb-3 text-[12px] font-bold tracking-wide text-ink-soft uppercase">Pessoas</h4>
             <div className="flex flex-col gap-3">
               {people.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 card-shadow">
+                <div key={p.id} className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3">
                   <PhotoUpload
                     name={p.name}
                     photoUrl={p.photoUrl}
@@ -98,7 +98,7 @@ export default function ManageDrawer({
           <section className="mt-7">
             <h4 className="mb-3 text-[12px] font-bold tracking-wide text-ink-soft uppercase">Clientes</h4>
 
-            <div className="mb-3 flex items-center gap-2 rounded-full border border-black/[0.07] bg-white/70 p-1 pl-3">
+            <div className="mb-3 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1 pl-3">
               <input
                 value={newClient}
                 onChange={(e) => setNewClient(e.target.value)}
@@ -160,7 +160,7 @@ function ClientRow({
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-white px-3.5 py-2.5 card-shadow">
+    <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-3.5 py-2.5">
       <PhotoUpload
         name={client.nome}
         photoUrl={client.photoUrl}
@@ -177,7 +177,7 @@ function ClientRow({
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => e.key === 'Enter' && commit()}
-          className="min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-2 py-1 text-[14px] font-semibold text-ink outline-none focus:border-accent/50"
+          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[14px] font-semibold text-ink outline-none focus:border-accent/50"
         />
       ) : (
         <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-ink">{client.nome}</span>
@@ -185,15 +185,15 @@ function ClientRow({
 
       <div className="flex items-center gap-1">
         {editing ? (
-          <button onClick={commit} className="flex h-7 w-7 items-center justify-center rounded-full text-done hover:bg-black/5" title="Salvar">
+          <button onClick={commit} className="flex h-7 w-7 items-center justify-center rounded-full text-done hover:bg-white/8" title="Salvar">
             <Check className="h-4 w-4" />
           </button>
         ) : (
-          <button onClick={() => setEditing(true)} className="flex h-7 w-7 items-center justify-center rounded-full text-ink-faint hover:bg-black/5 hover:text-ink" title="Renomear">
+          <button onClick={() => setEditing(true)} className="flex h-7 w-7 items-center justify-center rounded-full text-ink-faint hover:bg-white/8 hover:text-ink" title="Renomear">
             <Pencil className="h-3.5 w-3.5" />
           </button>
         )}
-        <button onClick={onRemove} className="flex h-7 w-7 items-center justify-center rounded-full text-ink-faint hover:bg-black/5 hover:text-danger" title="Remover">
+        <button onClick={onRemove} className="flex h-7 w-7 items-center justify-center rounded-full text-ink-faint hover:bg-white/8 hover:text-danger" title="Remover">
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>

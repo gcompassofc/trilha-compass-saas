@@ -14,8 +14,8 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4 text-center">
-      <div className="w-full max-w-sm rounded-3xl bg-white/70 p-10 card-shadow">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
+      <div className="w-full max-w-sm rounded-3xl bg-surface glass p-10 shadow-2xl ring-1 ring-hairline">
         <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent">
           <span className="h-6 w-6 rounded-lg bg-white" />
         </div>

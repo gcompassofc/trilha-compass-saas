@@ -10,13 +10,13 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Client, Demand, Idea, MuralNote, Person, PersonId } from './types';
+import type { BacklogItem, Client, Demand, MuralNote, Person, PersonId } from './types';
 
 // Coleções próprias do app novo (não tocam nas do app antigo).
 const C = {
   demandas: 'demandas',
   notas: 'mural_notas',
-  ideias: 'ideias',
+  backlog: 'fluxo_backlog',
   clientes: 'fluxo_clientes',
   pessoas: 'fluxo_pessoas',
 } as const;
@@ -119,22 +119,22 @@ export const fluxoDb = {
     }
   },
 
-  // ── Ideias (Gaveta) ──
-  subscribeToIdeas: (cb: (rows: Idea[]) => void) => subscribe<Idea>(C.ideias, cb),
-  async addIdea(i: Omit<Idea, 'id'>): Promise<string | null> {
+  // ── Backlog (Gaveta) ──
+  subscribeToBacklog: (cb: (rows: BacklogItem[]) => void) => subscribe<BacklogItem>(C.backlog, cb),
+  async addBacklogItem(b: Omit<BacklogItem, 'id'>): Promise<string | null> {
     try {
-      const ref = await addDoc(collection(db, C.ideias), stripUndefined(i as Record<string, unknown>));
+      const ref = await addDoc(collection(db, C.backlog), stripUndefined(b as Record<string, unknown>));
       return ref.id;
     } catch (e) {
-      logErr('addIdea', e);
+      logErr('addBacklogItem', e);
       return null;
     }
   },
-  async deleteIdea(id: string) {
+  async deleteBacklogItem(id: string) {
     try {
-      await deleteDoc(doc(db, C.ideias, id));
+      await deleteDoc(doc(db, C.backlog, id));
     } catch (e) {
-      logErr('deleteIdea', e);
+      logErr('deleteBacklogItem', e);
     }
   },
 

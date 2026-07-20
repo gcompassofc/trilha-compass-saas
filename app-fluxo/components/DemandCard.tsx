@@ -36,8 +36,8 @@ export default function DemandCard({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={[
-        'group relative rounded-2xl bg-white px-[15px] py-[14px] card-shadow',
-        'transition-shadow hover:card-shadow-hover',
+        'group relative rounded-2xl bg-card glass-12 px-[15px] py-[14px] ring-1 ring-hairline',
+        'transition hover:ring-white/15',
         selectMode ? 'cursor-pointer' : draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
         selected ? 'ring-2 ring-accent' : '',
         dragging ? 'dragging' : '',
@@ -48,7 +48,7 @@ export default function DemandCard({
         <span
           className={[
             'absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full border-2 transition',
-            selected ? 'border-transparent bg-accent text-white' : 'border-black/20 bg-white text-transparent',
+            selected ? 'border-transparent bg-accent text-white' : 'border-white/25 bg-white/5 text-transparent',
           ].join(' ')}
         >
           <Check className="h-3 w-3" strokeWidth={3} />

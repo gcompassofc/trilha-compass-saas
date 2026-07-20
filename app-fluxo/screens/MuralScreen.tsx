@@ -71,7 +71,7 @@ export default function MuralScreen({ notes, onAddNote, onMoveNote, onDeleteNote
           <p className="text-[13px] text-ink-faint">Escreva ideias soltas e diga quem foi. Arraste pra organizar.</p>
         </div>
         {/* nova nota */}
-        <div className="flex items-center gap-2 rounded-full border border-black/[0.07] bg-white/70 p-1 pl-3">
+        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-card glass-12 p-1 pl-3">
           <input
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
@@ -105,7 +105,7 @@ export default function MuralScreen({ notes, onAddNote, onMoveNote, onDeleteNote
         ref={areaRef}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        className="mural-grid relative min-h-[560px] w-full touch-none overflow-hidden rounded-2xl border border-black/[0.06] bg-white/40"
+        className="mural-grid relative min-h-[560px] w-full touch-none overflow-hidden rounded-2xl border border-white/10 bg-white/2"
       >
         {localNotes.map((n) => {
           const color = NOTE_COLORS[n.cor % NOTE_COLORS.length];
@@ -119,7 +119,7 @@ export default function MuralScreen({ notes, onAddNote, onMoveNote, onDeleteNote
                 boxShadow: draggingId === n.id ? '0 18px 40px -18px rgba(40,38,60,.55)' : undefined,
               }}
               className={[
-                'group absolute w-[220px] rounded-2xl px-4 py-3.5 card-shadow transition-shadow',
+                'group absolute w-[220px] rounded-2xl px-4 py-3.5 ring-1 ring-hairline shadow-lg transition-shadow',
                 draggingId === n.id ? 'z-20 scale-[1.02]' : 'z-10',
               ].join(' ')}
             >

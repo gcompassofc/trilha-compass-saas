@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
-import { Search, LayoutGrid, StickyNote, Users, Plus, Lightbulb, Settings2, LogOut } from 'lucide-react';
+import { Search, LayoutGrid, StickyNote, Users, Plus, Settings2, LogOut, Flame } from 'lucide-react';
 import { CATEGORIES } from './data';
-import type { CategoryId, Demand, Idea, MuralNote, PersonId } from './types';
+import type { BacklogItem, CategoryId, Demand, Horizon, MuralNote, PersonId, StatusId } from './types';
 import { auth } from './firebase';
 import { fluxoDb } from './fluxoDb';
 import { fileToAvatarDataUrl } from './lib';
@@ -13,7 +13,7 @@ import Avatar from './components/Avatar';
 import BoardScreen from './screens/BoardScreen';
 import MuralScreen from './screens/MuralScreen';
 import DuoScreen from './screens/DuoScreen';
-import IdeasDrawer from './screens/IdeasDrawer';
+import BacklogDrawer from './screens/BacklogDrawer';
 import ManageDrawer from './screens/ManageDrawer';
 import DemandModal from './components/DemandModal';
 
@@ -36,13 +36,14 @@ export default function App() {
 
   const authed = !!user;
   // dados em tempo real (só assina depois de autenticar)
-  const { demands, notes, ideas, clients, people, loading } = useFluxoData(authed);
+  const { demands, notes, backlog, clients, people, loading } = useFluxoData(authed);
 
   // ── UI local ──
   const [screen, setScreen] = useState<Screen>('quadro');
   const [query, setQuery] = useState('');
   const [catFilter, setCatFilter] = useState<CategoryId | null>(null);
   const [personFilter, setPersonFilter] = useState<PersonId | null>(null);
+  const [focus, setFocus] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [editing, setEditing] = useState<Demand | null>(null);
@@ -68,8 +69,21 @@ export default function App() {
   function patchDemand(id: string, patch: Partial<Demand>) {
     fluxoDb.updateDemand(id, patch);
   }
-  function quickAdd(status: Demand['status'], titulo: string) {
-    fluxoDb.addDemand({ titulo, cliente: 'Interno', status, owner: null, categoria: 'social', prioridade: 'media', prazo: null });
+  // Mover no Quadro: grava status + fixa o horizonte manualmente (a linha alvo).
+  function moveDemand(id: string, horizonte: Horizon, status: StatusId) {
+    fluxoDb.updateDemand(id, { status, horizonte });
+  }
+  function quickAdd(horizonte: Horizon, status: StatusId) {
+    fluxoDb.addDemand({
+      titulo: 'Nova demanda',
+      cliente: 'Interno',
+      status,
+      owner: personFilter ?? null,
+      categoria: 'social',
+      prioridade: 'media',
+      prazo: null,
+      horizonte,
+    });
   }
 
   function openNew() {
@@ -79,6 +93,23 @@ export default function App() {
   function openEdit(d: Demand) {
     setEditing(d);
     setModalOpen(true);
+  }
+
+  // Puxa item do backlog pro Quadro (Hoje) e remove do backlog.
+  async function pullBacklog(item: BacklogItem) {
+    await fluxoDb.addDemand({
+      titulo: item.titulo,
+      cliente: 'Interno',
+      status: 'afazer',
+      owner: personFilter ?? null,
+      categoria: item.categoria,
+      prioridade: 'media',
+      prazo: null,
+      horizonte: 'hoje',
+    });
+    await fluxoDb.deleteBacklogItem(item.id);
+    setDrawerOpen(false);
+    setScreen('quadro');
   }
 
   // ── clientes ──
@@ -128,7 +159,7 @@ export default function App() {
     <StoreProvider value={{ people, clients }}>
       <div className="flex min-h-screen flex-col">
         {/* ───────── Header ───────── */}
-        <header className="sticky top-0 z-30 border-b border-black/[0.06] bg-canvas/85 backdrop-blur-md">
+        <header className="sticky top-0 z-30 border-b border-hairline-soft bg-surface glass-30">
           <div className="mx-auto flex w-full max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-6">
             <div className="flex items-center gap-2.5">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
@@ -141,12 +172,12 @@ export default function App() {
             </div>
 
             <div className="relative ml-1 flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-ink-faint" />
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-ink-dim" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar demanda, cliente..."
-                className="w-full rounded-full border border-black/[0.06] bg-white/70 py-2.5 pr-4 pl-9 text-[14px] text-ink outline-none placeholder:text-ink-faint focus:border-accent/40 focus:bg-white"
+                className="w-full rounded-full border border-white/10 bg-white/5 py-2.5 pr-4 pl-9 text-[14px] text-ink outline-none placeholder:text-ink-dim focus:border-accent/40 focus:bg-white/8"
               />
             </div>
 
@@ -158,19 +189,34 @@ export default function App() {
                   onClick={() => setPersonFilter((cur) => (cur === p.id ? null : p.id))}
                   className={[
                     'flex items-center gap-2 rounded-full py-1 pr-3 pl-1 transition',
-                    personFilter === p.id ? 'bg-white shadow-sm ring-1 ring-accent/30' : 'hover:bg-white/60',
+                    personFilter === p.id ? 'bg-white/10 ring-1 ring-accent/40' : 'hover:bg-white/6',
                   ].join(' ')}
                 >
                   <Avatar id={p.id} size={30} ring />
-                  <span className="text-[13px] font-semibold text-ink">{p.name}</span>
+                  <span className="text-[13px] font-semibold text-ink-2">{p.name}</span>
                 </button>
               ))}
             </div>
 
+            {/* modo foco */}
+            <button
+              onClick={() => setFocus((f) => !f)}
+              title="Modo foco: só as demandas de hoje"
+              className={[
+                'flex h-10 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition',
+                focus
+                  ? 'bg-accent-soft text-accent-text ring-1 ring-accent/40'
+                  : 'border border-white/10 bg-white/5 text-ink-soft hover:bg-white/8 hover:text-ink',
+              ].join(' ')}
+            >
+              <Flame className="h-[15px] w-[15px]" fill={focus ? 'currentColor' : 'none'} />
+              <span className="hidden sm:inline">Foco</span>
+            </button>
+
             <button
               onClick={() => setManageOpen(true)}
               title="Gerenciar pessoas e clientes"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-black/[0.07] bg-white/60 text-ink-soft transition hover:bg-white hover:text-ink"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-ink-soft transition hover:bg-white/8 hover:text-ink"
             >
               <Settings2 className="h-[18px] w-[18px]" />
             </button>
@@ -186,7 +232,7 @@ export default function App() {
             <button
               onClick={() => signOut(auth)}
               title="Sair"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-black/[0.07] bg-white/60 text-ink-soft transition hover:bg-white hover:text-ink"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-ink-soft transition hover:bg-white/8 hover:text-ink"
             >
               <LogOut className="h-[18px] w-[18px]" />
             </button>
@@ -224,10 +270,13 @@ export default function App() {
               {screen === 'quadro' && (
                 <BoardScreen
                   demands={filtered}
-                  onCardClick={openEdit}
-                  onMove={(id, status) => patchDemand(id, { status })}
+                  focus={focus}
+                  backlogCount={backlog.length}
+                  onOpenCard={openEdit}
+                  onMove={moveDemand}
                   onQuickAdd={quickAdd}
-                  onDeleteMany={(ids) => fluxoDb.deleteManyDemands(ids)}
+                  onOpenBacklog={() => setDrawerOpen(true)}
+                  onExitFocus={() => setFocus(false)}
                 />
               )}
               {screen === 'mural' && (
@@ -251,7 +300,7 @@ export default function App() {
         </main>
 
         {/* ───────── Nav inferior flutuante ───────── */}
-        <nav className="fixed bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink p-1.5 shadow-xl">
+        <nav className="fixed bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/10 bg-[#141922]/90 p-1.5 shadow-xl glass-30">
           {NAV.map((n) => {
             const Icon = n.icon;
             const active = screen === n.id;
@@ -261,7 +310,7 @@ export default function App() {
                 onClick={() => setScreen(n.id)}
                 className={[
                   'flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition',
-                  active ? 'bg-accent text-white' : 'text-white/70 hover:text-white',
+                  active ? 'bg-accent text-white' : 'text-ink-soft hover:text-ink',
                 ].join(' ')}
               >
                 <Icon className="h-4 w-4" />
@@ -271,36 +320,13 @@ export default function App() {
           })}
         </nav>
 
-        {/* ───────── Aba lateral Gaveta ───────── */}
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="fixed top-1/2 right-0 z-30 flex -translate-y-1/2 items-center gap-1.5 rounded-l-xl bg-ink px-2 py-4 text-[12px] font-bold tracking-wider text-white/90 shadow-lg [writing-mode:vertical-rl] hover:text-white"
-          title="Gaveta de ideias"
-        >
-          <Lightbulb className="h-3.5 w-3.5 rotate-90" />
-          GAVETA · {ideas.length}
-        </button>
-
-        <IdeasDrawer
+        <BacklogDrawer
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
-          ideas={ideas}
-          onAddIdea={(i) => fluxoDb.addIdea(i)}
-          onDeleteIdea={(id) => fluxoDb.deleteIdea(id)}
-          onPromote={async (idea) => {
-            await fluxoDb.addDemand({
-              titulo: idea.texto,
-              cliente: 'Interno',
-              status: 'afazer',
-              owner: idea.autor,
-              categoria: 'estrategia',
-              prioridade: 'media',
-              prazo: null,
-            });
-            await fluxoDb.deleteIdea(idea.id);
-            setDrawerOpen(false);
-            setScreen('quadro');
-          }}
+          backlog={backlog}
+          onPull={pullBacklog}
+          onAdd={(item) => fluxoDb.addBacklogItem(item)}
+          onDelete={(id) => fluxoDb.deleteBacklogItem(id)}
         />
 
         <ManageDrawer
@@ -339,7 +365,7 @@ export default function App() {
 
 function FullScreenSpinner({ label }: { label: string }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas text-[14px] text-ink-faint">
+    <div className="flex min-h-screen items-center justify-center text-[14px] text-ink-faint">
       {label}
     </div>
   );
@@ -363,8 +389,8 @@ function FilterPill({
       className={[
         'flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition',
         active
-          ? 'border-transparent bg-ink text-white'
-          : 'border-black/[0.07] bg-white/60 text-ink-soft hover:bg-white',
+          ? 'border-transparent bg-ink text-[#0f1217]'
+          : 'border-white/10 bg-white/5 text-ink-soft hover:bg-white/8 hover:text-ink',
       ].join(' ')}
     >
       {dot && <span className="h-1.5 w-1.5 rounded-full" style={{ background: dot }} />}

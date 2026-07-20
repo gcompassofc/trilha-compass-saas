@@ -42,7 +42,7 @@ export default function DuoScreen({ demands, onAssign, onToggleDone, onCardClick
         onDragLeave={() => setOver((o) => (o === 'inbox' ? null : o))}
         onDrop={() => dropOn('inbox')}
         className={[
-          'mb-5 rounded-2xl border border-black/[0.06] bg-black/[0.02] p-4 transition-colors',
+          'mb-5 rounded-2xl border border-white/10 bg-white/3 p-4 transition-colors',
           over === 'inbox' ? 'drop-active' : '',
         ].join(' ')}
       >
@@ -86,7 +86,7 @@ export default function DuoScreen({ demands, onAssign, onToggleDone, onCardClick
               onDragLeave={() => setOver((o) => (o === p.id ? null : o))}
               onDrop={() => dropOn(p.id)}
               className={[
-                'rounded-2xl border border-black/[0.06] bg-white/50 p-4 transition-colors',
+                'rounded-2xl border border-white/10 bg-white/3 p-4 transition-colors',
                 isOver ? 'drop-active' : '',
               ].join(' ')}
             >
@@ -144,7 +144,7 @@ function InboxCard({
       onClick={onClick}
       style={{ borderLeft: `4px solid ${cat.colorVar}` }}
       className={[
-        'w-[240px] cursor-grab rounded-xl bg-white px-4 py-3 card-shadow active:cursor-grabbing',
+        'w-[240px] cursor-grab rounded-xl bg-card glass-12 ring-1 ring-hairline px-4 py-3 active:cursor-grabbing',
         dragging ? 'dragging' : '',
       ].join(' ')}
     >
@@ -185,7 +185,7 @@ function PersonRow({
       onDragEnd={onDragEnd}
       style={{ borderLeft: `4px solid ${cat.colorVar}` }}
       className={[
-        'flex items-center gap-3 rounded-xl bg-white px-3.5 py-3 card-shadow',
+        'flex items-center gap-3 rounded-xl bg-card glass-12 ring-1 ring-hairline px-3.5 py-3',
         dragging ? 'dragging' : '',
       ].join(' ')}
     >
@@ -193,7 +193,7 @@ function PersonRow({
         onClick={onToggle}
         className={[
           'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition',
-          done ? 'border-transparent text-white' : 'border-black/20 text-transparent hover:border-accent',
+          done ? 'border-transparent text-white' : 'border-white/25 text-transparent hover:border-accent',
         ].join(' ')}
         style={done ? { background: 'var(--color-cat-estrategia)' } : undefined}
         title={done ? 'Concluída' : 'Marcar como concluída'}

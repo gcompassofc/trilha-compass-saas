@@ -1,6 +1,5 @@
-// Modelo de dados do app Fluxo. Estes tipos vão espelhar as coleções do
-// Firestore no passo 3 (demandas, mural_notas, ideias). Por enquanto, dados
-// de exemplo em memória para validar o visual.
+// Modelo de dados do app Fluxo. Estes tipos espelham as coleções do
+// Firestore (demandas, mural_notas, fluxo_backlog, fluxo_clientes, fluxo_pessoas).
 
 export type PersonId = 'allyson' | 'kallyl';
 
@@ -36,6 +35,18 @@ export interface StatusColumn {
 
 export type Priority = 'alta' | 'media' | 'baixa';
 
+// Horizonte de tempo (linhas da matriz do Quadro). Derivado do prazo:
+// Hoje (prazo <= hoje) / Esta semana (<= 7 dias) / Depois. Pode ser fixado
+// manualmente (ex.: item puxado do backlog cai em "Hoje").
+export type Horizon = 'hoje' | 'semana' | 'depois';
+
+export interface HorizonMeta {
+  id: Horizon;
+  label: string;
+  colorVar: string;
+  chipBg: string;
+}
+
 export interface Demand {
   id: string;
   titulo: string;
@@ -45,8 +56,25 @@ export interface Demand {
   categoria: CategoryId;
   prioridade: Priority;
   prazo: string | null; // ISO yyyy-mm-dd
+  horizonte?: Horizon | null; // override manual; se ausente, deriva de prazo
   concluida?: boolean; // usado no checkbox da tela Dupla
   descricao?: string; // briefing em markdown (texto, links, imagens por URL)
+  extra?: Record<string, string>; // campos por categoria (vídeo/design/tráfego)
+}
+
+// Item de backlog: demanda sem horizonte definido ainda. Vive na gaveta.
+export interface BacklogItem {
+  id: string;
+  titulo: string;
+  categoria: CategoryId;
+}
+
+// Modelo pronto para preencher o modal de nova demanda.
+export interface Template {
+  nome: string;
+  categoria: CategoryId;
+  prioridade: Priority;
+  descricao: string;
 }
 
 export interface MuralNote {
@@ -56,10 +84,4 @@ export interface MuralNote {
   x: number; // posição livre (px relativos à área do mural)
   y: number;
   cor: number; // índice na paleta de post-its
-}
-
-export interface Idea {
-  id: string;
-  texto: string;
-  autor: PersonId;
 }

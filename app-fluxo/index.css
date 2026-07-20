@@ -1,35 +1,59 @@
 @import 'tailwindcss';
 
-/* ── Fluxo · design tokens ───────────────────────────────────────────────
-   Extraídos do HTML de referência (referencia/app-novo-original.html).
-   Accent oklch(0.55 0.2 264) ≈ #4f5bf0; fundo off-white quente #f1efe9. */
+/* ── Fluxo · tema ESCURO (redesign) ──────────────────────────────────────
+   Extraído do HTML de referência "Fluxo Redesign". Fundo gradiente azul/roxo,
+   superfícies glass (blur), accent indigo #6B76FF. */
 @theme {
   --font-sans: 'Onest', system-ui, -apple-system, sans-serif;
   --font-hand: 'Caveat', 'Onest', cursive;
 
-  --color-canvas: oklch(0.94 0.008 85); /* #f1efe9 */
-  --color-ink: oklch(0.24 0.01 285); /* #1d1c22 quase-preto */
-  --color-ink-soft: oklch(0.5 0.01 285);
-  --color-ink-faint: oklch(0.65 0.008 285);
+  /* texto */
+  --color-ink: #f2f4f8; /* títulos */
+  --color-ink-2: #d5d9df; /* corpo */
+  --color-ink-soft: #9aa3ae; /* secundário */
+  --color-ink-faint: #7a828e; /* terciário */
+  --color-ink-dim: #5b6472; /* placeholder/hint */
 
-  --color-accent: oklch(0.55 0.2 264);
-  --color-accent-strong: oklch(0.5 0.2 264);
-  --color-accent-soft: oklch(0.55 0.2 264 / 0.1);
+  /* superfícies (sobre o gradiente) */
+  --color-surface: rgba(24, 29, 39, 0.55);
+  --color-surface-2: rgba(255, 255, 255, 0.04);
+  --color-surface-3: rgba(255, 255, 255, 0.06);
+  --color-card: rgba(44, 50, 64, 0.42);
+  --color-hairline: rgba(255, 255, 255, 0.08);
+  --color-hairline-soft: rgba(255, 255, 255, 0.06);
+
+  --color-accent: #6b76ff;
+  --color-accent-2: #4148d8;
+  --color-accent-strong: #5560f5;
+  --color-accent-soft: rgba(107, 118, 255, 0.14);
+  --color-accent-text: #8b95ff;
 
   /* categorias */
-  --color-cat-social: oklch(0.6 0.16 300);
-  --color-cat-trafego: oklch(0.58 0.17 260);
-  --color-cat-design: oklch(0.64 0.16 356);
-  --color-cat-video: oklch(0.55 0.16 288);
-  --color-cat-site: oklch(0.62 0.12 200);
-  --color-cat-estrategia: oklch(0.7 0.13 66);
+  --color-cat-social: #8b5cf6;
+  --color-cat-trafego: #22b364;
+  --color-cat-design: #ec4899;
+  --color-cat-video: #3b82f6;
+  --color-cat-site: #12b39b;
+  --color-cat-estrategia: #e0982f;
 
   /* pessoas */
-  --color-p-allyson: oklch(0.55 0.16 288); /* roxo */
-  --color-p-kallyl: oklch(0.56 0.17 262); /* azul */
+  --color-p-allyson: #2e7d57;
+  --color-p-kallyl: #3f8f5f;
 
-  --color-danger: oklch(0.58 0.19 25);
-  --color-done: oklch(0.68 0.15 150);
+  /* status */
+  --color-st-afazer: #9ca3af;
+  --color-st-fazendo: #4c5bf4;
+  --color-st-revisao: #e0982f;
+  --color-st-feito: #22b364;
+
+  /* horizontes */
+  --color-hz-hoje: #ef4444;
+  --color-hz-semana: #f59e0b;
+  --color-hz-depois: #9ca3af;
+
+  --color-danger: #ef4444;
+  --color-warn: #eab308;
+  --color-done: #34d399;
 }
 
 html,
@@ -40,24 +64,33 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  background: linear-gradient(160deg, #22326e 0%, #0e1330 52%, #2b1c48 100%);
+  background-attachment: fixed;
 }
 
-/* sombra padrão dos cartões (rgba(40,38,60,.4) 0 8px 20px -14px na referência) */
-@utility card-shadow {
-  box-shadow: 0 8px 20px -14px rgba(40, 38, 60, 0.45);
+/* superfície glass reutilizável */
+@utility glass {
+  background: var(--color-surface);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
 }
-@utility card-shadow-hover {
-  box-shadow: 0 14px 30px -16px rgba(40, 38, 60, 0.5);
+@utility glass-30 {
+  backdrop-filter: blur(30px) saturate(170%);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+}
+@utility glass-12 {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-/* grid pontilhado do Mural */
+/* grid pontilhado do Mural (adaptado ao escuro) */
 .mural-grid {
-  background-image: radial-gradient(oklch(0.24 0.01 285 / 0.07) 1.4px, transparent 1.4px);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1.4px, transparent 1.4px);
   background-size: 26px 26px;
 }
 
@@ -68,7 +101,21 @@ body {
   scrollbar-width: none;
 }
 
-/* item sendo arrastado */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a313c;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #39424f;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .dragging {
   opacity: 0.4;
 }
@@ -76,4 +123,23 @@ body {
   outline: 2px dashed var(--color-accent);
   outline-offset: -4px;
   background: var(--color-accent-soft);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-ink-dim);
+}
+
+@keyframes fxIn {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.anim-in {
+  animation: fxIn 0.22s ease;
 }

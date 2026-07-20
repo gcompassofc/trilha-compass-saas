@@ -1,5 +1,5 @@
-import { CATEGORIES, PEOPLE, TODAY } from './data';
-import type { CategoryId, Demand, PersonId, Priority } from './types';
+import { CATEGORIES, HORIZONS, PEOPLE, STATUS_COLUMNS, TODAY } from './data';
+import type { CategoryId, Demand, Horizon, PersonId, Priority, StatusId } from './types';
 
 export function person(id: PersonId | null | undefined) {
   return PEOPLE.find((p) => p.id === id);
@@ -7,6 +7,29 @@ export function person(id: PersonId | null | undefined) {
 
 export function category(id: CategoryId) {
   return CATEGORIES.find((c) => c.id === id)!;
+}
+
+export function statusMeta(id: StatusId) {
+  return STATUS_COLUMNS.find((s) => s.id === id)!;
+}
+
+export function horizonMeta(id: Horizon) {
+  return HORIZONS.find((h) => h.id === id)!;
+}
+
+/** Horizonte de uma demanda: override manual, senão derivado do prazo. */
+export function demandHorizon(d: Demand): Horizon {
+  if (d.horizonte) return d.horizonte;
+  return horizonFromPrazo(d.prazo);
+}
+
+/** Deriva o horizonte a partir do prazo (Hoje / Esta semana / Depois). */
+export function horizonFromPrazo(prazo: string | null | undefined): Horizon {
+  if (!prazo) return 'depois';
+  const diff = daysFromToday(prazo);
+  if (diff <= 0) return 'hoje';
+  if (diff <= 7) return 'semana';
+  return 'depois';
 }
 
 export function personColor(id: PersonId): string {
@@ -53,6 +76,12 @@ export const PRIORITY_LABEL: Record<Priority, string> = {
   alta: 'Prioridade alta',
   media: 'Prioridade média',
   baixa: 'Prioridade baixa',
+};
+
+export const PRIORITY_META: Record<Priority, { label: string; color: string }> = {
+  alta: { label: 'Alta', color: 'var(--color-danger)' },
+  media: { label: 'Média', color: 'var(--color-hz-semana)' },
+  baixa: { label: 'Baixa', color: 'var(--color-ink-soft)' },
 };
 
 export function initial(name: string): string {

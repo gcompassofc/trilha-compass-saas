@@ -1,11 +1,13 @@
 import type {
+  BacklogItem,
   Category,
   Client,
   Demand,
-  Idea,
+  HorizonMeta,
   MuralNote,
   Person,
   StatusColumn,
+  Template,
 } from './types';
 
 export const PEOPLE: Person[] = [
@@ -20,6 +22,12 @@ export const SEED_CLIENTS: Client[] = [
   { id: 'c3', nome: 'Interno' },
 ];
 
+// Ao escolher um cliente no modal, sugere responsável + categoria.
+export const CLIENT_DEFAULTS: Record<string, { owner: Person['id']; categoria: Category['id'] }> = {
+  'Loja Aurora': { owner: 'allyson', categoria: 'design' },
+  TechFlow: { owner: 'kallyl', categoria: 'site' },
+};
+
 export const CATEGORIES: Category[] = [
   { id: 'social', label: 'Social Media', colorVar: 'var(--color-cat-social)' },
   { id: 'trafego', label: 'Tráfego', colorVar: 'var(--color-cat-trafego)' },
@@ -30,24 +38,60 @@ export const CATEGORIES: Category[] = [
 ];
 
 export const STATUS_COLUMNS: StatusColumn[] = [
-  { id: 'afazer', label: 'A fazer', colorVar: 'var(--color-ink-faint)' },
-  { id: 'fazendo', label: 'Fazendo', colorVar: 'var(--color-cat-trafego)' },
-  { id: 'revisao', label: 'Revisão', colorVar: 'var(--color-cat-estrategia)' },
-  { id: 'feito', label: 'Feito', colorVar: 'var(--color-done)' },
+  { id: 'afazer', label: 'A fazer', colorVar: 'var(--color-st-afazer)' },
+  { id: 'fazendo', label: 'Fazendo', colorVar: 'var(--color-st-fazendo)' },
+  { id: 'revisao', label: 'Revisão', colorVar: 'var(--color-st-revisao)' },
+  { id: 'feito', label: 'Feito', colorVar: 'var(--color-st-feito)' },
 ];
 
-// Paleta de post-its do Mural (cores pastel da referência).
+// Linhas da matriz do Quadro.
+export const HORIZONS: HorizonMeta[] = [
+  { id: 'hoje', label: 'Hoje', colorVar: 'var(--color-hz-hoje)', chipBg: 'rgba(239,68,68,.14)' },
+  { id: 'semana', label: 'Esta semana', colorVar: 'var(--color-hz-semana)', chipBg: 'rgba(245,158,11,.14)' },
+  { id: 'depois', label: 'Depois', colorVar: 'var(--color-hz-depois)', chipBg: 'rgba(156,163,175,.16)' },
+];
+
+// Campos extras exibidos no modal conforme a categoria.
+export const EXTRA_FIELDS: Partial<Record<Category['id'], { key: string; label: string }[]>> = {
+  video: [
+    { key: 'link', label: 'Link dos arquivos' },
+    { key: 'formato', label: 'Formato' },
+    { key: 'duracao', label: 'Duração' },
+    { key: 'ref', label: 'Referência' },
+  ],
+  design: [
+    { key: 'formato', label: 'Formato da arte' },
+    { key: 'dim', label: 'Dimensões' },
+    { key: 'texto', label: 'Texto da peça' },
+    { key: 'ref', label: 'Referências' },
+  ],
+  trafego: [
+    { key: 'obj', label: 'Objetivo' },
+    { key: 'orc', label: 'Orçamento' },
+    { key: 'plat', label: 'Plataforma' },
+    { key: 'inicio', label: 'Data de início' },
+  ],
+};
+
+export const TEMPLATES: Template[] = [
+  { nome: 'Criativo para anúncio', categoria: 'design', prioridade: 'alta', descricao: 'Peça para anúncio pago. Incluir headline, CTA e variações.' },
+  { nome: 'Edição de Reels', categoria: 'video', prioridade: 'media', descricao: 'Editar Reels vertical 9:16, até 45s, com legendas.' },
+  { nome: 'Publicação de artigo', categoria: 'site', prioridade: 'media', descricao: 'Publicar artigo no blog com SEO básico.' },
+  { nome: 'Nova campanha', categoria: 'trafego', prioridade: 'alta', descricao: 'Estruturar campanha: objetivo, público e orçamento.' },
+  { nome: 'Ajuste no site', categoria: 'site', prioridade: 'media', descricao: 'Ajuste pontual no site. Descrever a alteração.' },
+  { nome: 'Relatório mensal', categoria: 'estrategia', prioridade: 'baixa', descricao: 'Compilar métricas do mês e insights.' },
+];
+
+// Paleta de post-its do Mural (adaptada ao tema escuro).
 export const NOTE_COLORS = [
-  { bg: 'oklch(0.95 0.03 300)', accent: 'var(--color-cat-social)' },
-  { bg: 'oklch(0.95 0.03 260)', accent: 'var(--color-cat-trafego)' },
-  { bg: 'oklch(0.95 0.03 356)', accent: 'var(--color-cat-design)' },
-  { bg: 'oklch(0.95 0.03 66)', accent: 'var(--color-cat-estrategia)' },
+  { bg: 'rgba(139,92,246,.22)', accent: 'var(--color-cat-social)' },
+  { bg: 'rgba(59,130,246,.22)', accent: 'var(--color-cat-video)' },
+  { bg: 'rgba(236,72,153,.22)', accent: 'var(--color-cat-design)' },
+  { bg: 'rgba(224,152,47,.22)', accent: 'var(--color-cat-estrategia)' },
 ];
 
-// Datas relativas a "hoje" = 2026-07-10 para reproduzir os badges
-// (Hoje / Atrasado) exatamente como na referência.
+// Datas relativas a "hoje" = 2026-07-10.
 export const SEED_DEMANDS: Demand[] = [
-  // d1/d2 sem dono: aparecem na "Caixa de entrada compartilhada" da tela Dupla
   { id: 'd1', titulo: 'Stories com enquete', cliente: 'Loja Aurora', status: 'afazer', owner: null, categoria: 'social', prioridade: 'media', prazo: '2026-07-11' },
   { id: 'd2', titulo: 'Reels bastidores do evento', cliente: 'TechFlow', status: 'afazer', owner: null, categoria: 'video', prioridade: 'media', prazo: '2026-07-16' },
   { id: 'd3', titulo: 'Campanha Black Friday', cliente: 'Loja Aurora', status: 'afazer', owner: 'kallyl', categoria: 'trafego', prioridade: 'alta', prazo: '2026-07-20' },
@@ -66,11 +110,14 @@ export const SEED_NOTES: MuralNote[] = [
   { id: 'n5', texto: 'Enquete: qual próximo produto?', autor: 'allyson', x: 300, y: 250, cor: 2 },
 ];
 
-export const SEED_IDEAS: Idea[] = [
-  { id: 'i1', texto: 'Campanha de indicação (member get member)', autor: 'kallyl' },
-  { id: 'i2', texto: 'Vídeo depoimento de cliente', autor: 'allyson' },
-  { id: 'i3', texto: 'Rebrand do e-book em setembro', autor: 'kallyl' },
+export const SEED_BACKLOG: BacklogItem[] = [
+  { id: 'b1', titulo: 'Newsletter setembro', categoria: 'estrategia' },
+  { id: 'b2', titulo: 'Roteiro - Reels institucional', categoria: 'video' },
+  { id: 'b3', titulo: 'Briefing tráfego Q3', categoria: 'trafego' },
+  { id: 'b4', titulo: 'Design - E-book captação', categoria: 'design' },
+  { id: 'b5', titulo: 'Atualizar bio do Instagram', categoria: 'social' },
+  { id: 'b6', titulo: 'Landing page nova', categoria: 'site' },
 ];
 
-// "Hoje" fixo para os dados de exemplo baterem com os badges.
+// "Hoje" fixo para os dados de exemplo baterem com os horizontes.
 export const TODAY = '2026-07-10';

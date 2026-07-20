@@ -77,9 +77,9 @@ export default function DescriptionEditor({ value, onChange }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-black/[0.08] bg-white/70">
+    <div className="rounded-xl border border-white/10 bg-white/5">
       {/* barra */}
-      <div className="flex items-center justify-between border-b border-black/[0.06] px-2 py-1.5">
+      <div className="flex items-center justify-between border-b border-hairline-soft px-2 py-1.5">
         <div className="flex items-center gap-0.5">
           <ToolBtn title="Negrito (Ctrl+B)" onClick={() => wrap('**', '**', 'negrito')}><Bold className="h-4 w-4" /></ToolBtn>
           <ToolBtn title="Itálico (Ctrl+I)" onClick={() => wrap('*', '*', 'itálico')}><Italic className="h-4 w-4" /></ToolBtn>
@@ -117,7 +117,7 @@ function ToolBtn({ title, onClick, children }: { title: string; onClick: () => v
       type="button"
       title={title}
       onClick={onClick}
-      className="flex h-7 w-7 items-center justify-center rounded-md text-ink-soft transition hover:bg-black/5 hover:text-ink"
+      className="flex h-7 w-7 items-center justify-center rounded-md text-ink-soft transition hover:bg-white/8 hover:text-ink"
     >
       {children}
     </button>
@@ -131,7 +131,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
       onClick={onClick}
       className={[
         'flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-semibold transition',
-        active ? 'bg-ink text-white' : 'text-ink-soft hover:bg-black/5',
+        active ? 'bg-accent text-white' : 'text-ink-soft hover:bg-white/8',
       ].join(' ')}
     >
       {children}

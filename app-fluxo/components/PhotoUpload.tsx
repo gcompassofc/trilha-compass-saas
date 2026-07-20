@@ -65,7 +65,7 @@ export default function PhotoUpload({
           type="button"
           onClick={onRemove}
           title="Remover foto"
-          className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-ink-soft shadow ring-1 ring-black/10 hover:text-ink"
+          className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#232a36] text-ink-soft shadow ring-1 ring-white/15 hover:text-ink"
         >
           <X className="h-3 w-3" />
         </button>
